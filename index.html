@@ -1,0 +1,1412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="TinkerMario - a pixel-art breadboard trainer. 48 levels from first light through logic chips to Arduino and ESP32 code.">
+<meta name="color-scheme" content="light">
+<!-- base reset: matches the host skeleton the page was authored against -->
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>Cirkutry Circuit Lab</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: an overworld map. Pixel sky up top, worlds as brick banners, levels as
+   blocks you stomp into. Hard edges only — no blur, no gradient decoration. */
+:root{
+  color-scheme: light;
+  --sky:#5C94FC; --sky2:#8FBCFF;
+  --cream:#FFF6E0; --paper:#FFFDF5; --ink:#17161C; --ink2:#4A4650;
+  --red:#E52521; --green:#43B047; --gold:#FBD000; --blue:#049CD8;
+  --purple:#8B5CF6; --brick:#C84C0C; --brick2:#E07A3E;
+  --board:#1E1940; --board2:#332B61;
+  --live:#FFD54A; --live2:#FFFFFF; --trace:#9A9AAC;
+  --good:#2E9E4F; --bad:#D32A22;
+  --wc:var(--blue);
+  --fp:"Press Start 2P","Courier New",monospace;
+  --fb:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --fm:"Courier New",ui-monospace,monospace;
+  --bev: inset -4px -4px 0 rgba(0,0,0,.22), inset 4px 4px 0 rgba(255,255,255,.38);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;color:var(--ink);font-family:var(--fb);font-size:16.5px;line-height:1.45;font-weight:500;
+  background:var(--sky);overflow-x:hidden;position:relative;
+}
+/* pixel sky: clouds up top, hills along the bottom */
+body::after{
+  content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background-color:var(--sky);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='200' viewBox='0 0 640 200'%3E%3Cg fill='%23ffffff'%3E%3Crect x='60' y='54' width='72' height='18'/%3E%3Crect x='72' y='42' width='48' height='12'/%3E%3Crect x='48' y='66' width='96' height='12'/%3E%3Crect x='372' y='30' width='60' height='15'/%3E%3Crect x='384' y='18' width='36' height='12'/%3E%3Crect x='360' y='42' width='84' height='12'/%3E%3Crect x='520' y='96' width='60' height='15'/%3E%3Crect x='532' y='84' width='36' height='12'/%3E%3Crect x='508' y='108' width='84' height='12'/%3E%3Crect x='190' y='128' width='54' height='14'/%3E%3Crect x='202' y='116' width='30' height='12'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(180deg,#4A86F7 0%,var(--sky) 40%,var(--sky2) 100%);
+  background-repeat:repeat-x,no-repeat;
+  background-position:center 78px,center;
+  background-size:640px 200px,cover;
+}
+body::before{
+  content:"";position:fixed;left:0;right:0;bottom:0;height:120px;z-index:-1;pointer-events:none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='120' viewBox='0 0 480 120'%3E%3Cg fill='%2343B047'%3E%3Crect x='40' y='60' width='24' height='60'/%3E%3Crect x='16' y='84' width='24' height='36'/%3E%3Crect x='64' y='84' width='24' height='36'/%3E%3Crect x='0' y='96' width='16' height='24'/%3E%3Crect x='88' y='96' width='24' height='24'/%3E%3Crect x='300' y='72' width='24' height='48'/%3E%3Crect x='276' y='96' width='24' height='24'/%3E%3Crect x='324' y='96' width='24' height='24'/%3E%3C/g%3E%3Cg fill='%232F8A35'%3E%3Crect x='0' y='108' width='480' height='12'/%3E%3C/g%3E%3C/svg%3E") repeat-x bottom center/480px 120px;
+  opacity:.95;
+}
+h1,h2,h3{margin:0;font-family:var(--fb);font-weight:800;text-wrap:balance;line-height:1.15}
+button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.px{font-family:var(--fp);letter-spacing:0;line-height:1.6}
+
+/* ---------- HUD ---------- */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--ink);
+  border-bottom:4px solid #000;box-shadow:0 5px 0 rgba(0,0,0,.25)}
+.topcap{position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--ink)}
+.hud-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  padding-block:11px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hud-cell{display:flex;flex-direction:column;gap:5px;min-width:0}
+.hud-cell b{font-family:var(--fp);font-size:8.5px;color:#9A94B8;font-weight:400;white-space:nowrap}
+.hud-cell span{font-family:var(--fp);font-size:11px;color:#fff;white-space:nowrap}
+.hud-cell span.gold{color:var(--gold)}
+.hud-sp{flex:1}
+.hud-bar{width:132px;height:14px;background:#000;border:3px solid #000;box-shadow:inset 0 0 0 2px #3C3756;flex:none}
+.hud-bar i{display:block;height:100%;background:var(--gold);box-shadow:var(--bev);transition:width .4s steps(8)}
+@media (max-width:640px){.hud-in{gap:12px}.hud-bar{width:84px}.hud-cell b{font-size:7.5px}.hud-cell span{font-size:9.5px}}
+
+/* ---------- shell ---------- */
+.wrap{max-width:1180px;margin:0 auto;position:relative;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:26px 150px}
+.titlecard{background:var(--cream);border:4px solid var(--ink);box-shadow:7px 7px 0 rgba(0,0,0,.35);
+  padding:20px 22px;margin-bottom:8px}
+.titlecard h1{font-family:var(--fp);font-size:clamp(15px,3.6vw,26px);line-height:1.5;
+  color:var(--red);text-shadow:3px 3px 0 var(--ink)}
+.titlecard .sub{font-family:var(--fp);font-size:9px;color:var(--ink2);margin:12px 0 0}
+.lede{max-width:58ch;margin:12px 0 0;font-size:16px;color:#2C2833}
+.eyebrow{text-transform:uppercase;font-family:var(--fp);font-size:9px;color:var(--ink2);margin:0}
+
+/* ---------- world banners ---------- */
+.world{margin-top:30px}
+.world-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:11px 14px;
+  border:4px solid var(--ink);box-shadow:6px 6px 0 rgba(0,0,0,.35);margin-bottom:16px;
+  background-color:var(--wc);
+  background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 2px,transparent 2px 24px),
+                   repeating-linear-gradient(90deg,rgba(0,0,0,.14) 0 2px,transparent 2px 48px);}
+.world-tag{font-family:var(--fp);font-size:11px;color:#fff;text-shadow:2px 2px 0 var(--ink);white-space:nowrap}
+.world-h h2{font-family:var(--fp);font-size:11px;color:var(--gold);text-shadow:2px 2px 0 var(--ink);
+  font-weight:400;white-space:nowrap}
+.world-meta{margin-left:auto;font-family:var(--fp);font-size:9px;color:#fff;text-shadow:2px 2px 0 var(--ink)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:15px}
+
+/* ---------- level blocks ---------- */
+.tile{position:relative;text-align:left;width:100%;padding:0;display:flex;flex-direction:column;
+  border:4px solid var(--ink);background:var(--paper);box-shadow:6px 6px 0 rgba(0,0,0,.35);
+  transition:transform .08s steps(2),box-shadow .08s steps(2)}
+.tile:hover:not(.locked){transform:translate(-3px,-3px);box-shadow:9px 9px 0 rgba(0,0,0,.35)}
+.tile:active:not(.locked){transform:translate(3px,3px);box-shadow:2px 2px 0 rgba(0,0,0,.35)}
+.tile-head{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:4px solid var(--ink);
+  background-color:var(--wc);box-shadow:var(--bev)}
+.tile-num{font-family:var(--fp);font-size:11px;color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,.55)}
+.tile-badge{margin-left:auto;font-family:var(--fp);font-size:8px;padding:4px 7px;color:var(--ink);
+  background:var(--gold);border:3px solid var(--ink);white-space:nowrap}
+.tile-badge.code{background:#fff}
+.tile-body{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
+.tile-body h3{font-size:19px;letter-spacing:.01em}
+.tile-body p{margin:0;font-size:14.5px;color:#3A3542;line-height:1.35;font-weight:500}
+.tile-foot{font-family:var(--fp);font-size:7.5px;color:var(--ink2);margin-top:auto;padding-top:6px}
+.tile.done .tile-head{background-color:var(--green)}
+.tile.done::before{content:"★";position:absolute;top:-16px;right:-12px;font-size:34px;color:var(--gold);
+  text-shadow:0 3px 0 var(--ink),3px 0 0 var(--ink),-3px 0 0 var(--ink),0 -3px 0 var(--ink);
+  line-height:1;pointer-events:none}
+.tile.locked{cursor:not-allowed;background:#CFC9D8}
+.tile.locked .tile-head{background-color:#8A83A0}
+.tile.locked .tile-num{color:#E8E4F0}
+.tile.locked .tile-body h3,.tile.locked .tile-body p{color:#5B5569}
+
+/* ---------- panels ---------- */
+.bench{display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:920px){.bench{grid-template-columns:1fr}}
+.box,.pane{background:var(--paper);border:4px solid var(--ink);box-shadow:7px 7px 0 rgba(0,0,0,.35)}
+.pane{padding:16px;min-width:0}
+.pane h3{font-size:23px;margin:3px 0 6px}
+.obj{font-size:15px;color:#332F3C;margin:0}
+.hintbox{margin-top:13px;padding:12px;background:var(--cream);border:4px solid var(--ink);font-size:14.5px;color:#332F3C}
+.hintbox b{font-weight:800;color:var(--ink)}
+.backlink{display:inline-flex;align-items:center;gap:8px;text-transform:uppercase;font-family:var(--fp);font-size:9px;color:var(--ink);
+  padding:10px 13px;border:4px solid var(--ink);background:var(--gold);margin-bottom:16px;
+  box-shadow:4px 4px 0 rgba(0,0,0,.35)}
+.backlink:hover{background:#FFE76B}
+.backlink:active{transform:translate(2px,2px);box-shadow:2px 2px 0 rgba(0,0,0,.35)}
+
+.pal-h{text-transform:uppercase;font-family:var(--fp);font-size:8.5px;color:var(--ink2);margin:16px 0 10px}
+.pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:9px}
+.tool{background:var(--cream);border:4px solid var(--ink);padding:8px 4px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:5px;box-shadow:3px 3px 0 rgba(0,0,0,.3);
+  transition:transform .07s steps(2),box-shadow .07s steps(2)}
+.tool:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 rgba(0,0,0,.3)}
+.tool.on{background:var(--gold);box-shadow:inset 0 0 0 3px var(--ink),3px 3px 0 rgba(0,0,0,.3)}
+.tool svg{width:32px;height:24px;display:block}
+.tool span{font-family:var(--fp);font-size:7px;color:var(--ink)}
+
+.board-wrap{overflow-x:auto;padding:2px}
+.bb{display:block;margin:0 auto;width:100%;min-width:560px;height:auto}
+.hole{cursor:pointer}
+.hole:hover{stroke:#FFD54A;stroke-width:3}
+.cmp{cursor:pointer}
+.ticon{width:50px;height:26px;display:block}
+.lightbtn{font-family:var(--fp);font-size:9px;padding:11px 13px;border:4px solid var(--ink);
+  background:var(--gold);box-shadow:4px 4px 0 rgba(0,0,0,.35);text-transform:uppercase}
+.lightbtn:active{transform:translate(4px,4px);box-shadow:0 0 0}
+.runbar{display:flex;gap:11px;flex-wrap:wrap;align-items:center;margin-top:15px}
+.btn{font-family:var(--fp);text-transform:uppercase;font-size:10px;padding:13px 16px;border:4px solid var(--ink);background:var(--cream);
+  box-shadow:4px 4px 0 rgba(0,0,0,.35);transition:transform .07s steps(2),box-shadow .07s steps(2);white-space:nowrap}
+.btn:hover{background:#fff}
+.btn:active{transform:translate(4px,4px);box-shadow:0 0 0 rgba(0,0,0,.35)}
+.btn.go{background:var(--red);color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,.45)}
+.btn.go:hover{background:#FF4B40}
+.btn.sm{font-size:8.5px;padding:11px 13px}
+.verdict{flex:1;min-width:200px;font-size:15px;color:#3A3542;font-weight:600}
+.verdict.ok{color:var(--good)}
+.verdict.no{color:var(--bad)}
+
+.editor{width:100%;min-height:300px;background:var(--board);color:#F4ECD8;border:4px solid var(--ink);
+  padding:14px;font-family:var(--fm);font-size:14px;line-height:1.65;resize:vertical;tab-size:2;
+  white-space:pre;overflow-wrap:normal;overflow-x:auto;font-weight:700}
+.editor:focus{outline:none;box-shadow:inset 0 0 0 4px var(--gold)}
+.serial{margin-top:13px;background:var(--board);border:4px solid var(--ink);padding:11px 13px;
+  font-family:var(--fm);font-size:13px;color:#BDB4D8;max-height:130px;overflow:auto;white-space:pre-wrap;font-weight:700}
+.devboard{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 12px;
+  background:var(--board);border:4px solid var(--ink);box-shadow:inset 0 0 0 4px var(--board2)}
+.devname{text-transform:uppercase;font-family:var(--fp);font-size:9px;color:var(--gold)}
+.pins{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+.pin{display:flex;flex-direction:column;align-items:center;gap:8px}
+.bulb{width:34px;height:34px;background:#3B3560;border:4px solid var(--ink);transition:none}
+.bulb.on{background:var(--gold);box-shadow:var(--bev)}
+.bulb.red.on{background:var(--red)}
+.bulb.grn.on{background:var(--green)}
+.pin small{text-transform:uppercase;font-family:var(--fp);font-size:7px;color:#A79FC4}
+.sensorrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;
+  text-transform:uppercase;font-family:var(--fp);font-size:8px;color:#A79FC4}
+.sensorrow b{color:var(--gold);font-weight:400}
+.pads{display:flex;gap:10px;margin-top:12px}
+.pad{width:50px;height:38px;background:var(--brick2);border:4px solid var(--ink);display:grid;place-items:center;
+  font-family:var(--fp);font-size:8px;color:var(--ink);box-shadow:var(--bev)}
+.pad.hit{background:var(--gold)}
+.strip{display:flex;gap:4px;padding:8px;background:#0E0B1E;border:4px solid var(--ink)}
+.pxl{width:17px;height:17px;background:#3B3560;transition:none}
+.pushbtn{width:58px;height:58px;background:var(--red);border:4px solid var(--ink);display:grid;place-items:center;
+  font-family:var(--fp);font-size:7px;color:#fff;box-shadow:var(--bev)}
+.pushbtn.down{background:var(--gold);color:var(--ink);box-shadow:inset 4px 4px 0 rgba(0,0,0,.25)}
+
+.brief{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(8,14,34,.72);
+  padding:max(16px,env(safe-area-inset-left,0px)) }
+.brief-card{width:min(640px,94vw);max-height:86vh;overflow:auto;background:var(--paper);
+  border:4px solid var(--ink);box-shadow:9px 9px 0 rgba(0,0,0,.45)}
+.brief-head{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--wc,var(--blue));
+  border-bottom:4px solid var(--ink);box-shadow:var(--bev);font-family:var(--fp);font-size:10px;color:#fff;
+  text-shadow:2px 2px 0 rgba(0,0,0,.5)}
+.brief-head span:last-child{margin-left:auto}
+.brief-body{padding:18px}
+.brief-body h2{font-size:27px;margin-bottom:14px}
+.brief-body h4{font-family:var(--fp);font-size:9px;color:var(--ink2);margin:16px 0 7px;text-transform:uppercase}
+.brief-body p{margin:0;font-size:16.5px;line-height:1.5;color:#2C2833}
+.brief-body .btn{margin-top:20px;width:100%}
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(18px);
+  bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:50;max-width:min(92vw,470px);
+  background:var(--cream);border:4px solid var(--ink);box-shadow:7px 7px 0 rgba(0,0,0,.4);
+  padding:14px 18px;font-size:15px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s steps(3),transform .2s steps(3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast b{font-family:var(--fp);font-size:10px;color:var(--red);display:block;margin-bottom:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="topcap"></div>
+<div class="hud"><div class="hud-in">
+  <div class="hud-cell"><b>BUILDER</b><span id="rankName">APPRENTICE</span></div>
+  <div class="hud-cell"><b>SCORE</b><span class="gold" id="xpNow">000000</span></div>
+  <div class="hud-cell"><b>&#9733; STARS</b><span class="gold"><span id="starsNow">0</span>/<span id="starsAll">27</span></span></div>
+  <div class="hud-sp"></div>
+  <div class="hud-cell"><b>NEXT RANK</b><span id="xpNext">140</span></div>
+  <div class="hud-bar"><i id="xpBar" style="width:0%"></i></div>
+  <div class="hud-cell"><b>LV</b><span class="gold" id="rankNum">1</span></div>
+</div></div>
+
+<main class="wrap">
+  <section id="screen-map">
+    <div class="titlecard">
+      <h1>CIRCUIT LAB</h1>
+      <p class="sub">5 WORLDS &nbsp;&#9679;&nbsp; 48 LEVELS &nbsp;&#9679;&nbsp; REAL BREADBOARD</p>
+      <p class="lede">Build on a real breadboard — power rails, column strips, the gap down the middle — and watch current find its way home. Beat a level to
+        grab its star and open the next block &mdash; wiring first, then logic gates, then actual
+        Arduino and ESP32 code.</p>
+    </div>
+    <div id="stages"></div>
+  </section>
+
+  <section id="screen-level" hidden>
+    <button class="backlink" id="backA">&larr; World map</button>
+    <div class="bench">
+      <div class="box pane">
+        <p class="eyebrow" id="lvKicker">Level 1</p>
+        <h3 class="glow" id="lvTitle">First Light</h3>
+        <p class="obj" id="lvObj"></p>
+        <div class="hintbox" id="lvHint"></div>
+        <div class="pal-h" id="palH">Parts bin</div>
+        <div class="pal" id="pal"></div>
+      </div>
+      <div class="box pane">
+        <div class="board-wrap"><div class="board" id="board"></div></div>
+        <div class="runbar">
+          <button class="btn go" id="btnCheck">Run power</button>
+          <button class="btn sm" id="btnClear">Reset</button>
+          <button class="btn sm" id="btnBrief">Briefing</button>
+          <button class="lightbtn" id="lightBtn" hidden>Light: BRIGHT</button>
+          <p class="verdict" id="verdict">Pick a part, then tap the board to place it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-code" hidden>
+    <button class="backlink" id="backB">&larr; World map</button>
+    <div class="bench">
+      <div class="box pane">
+        <p class="eyebrow" id="cdKicker">Level</p>
+        <h3 class="glow" id="cdTitle">Blink</h3>
+        <p class="obj" id="cdObj"></p>
+        <div class="hintbox" id="cdHint"></div>
+        <div class="pal-h">Board</div>
+        <div class="devboard">
+          <div class="devname" id="cdBoardName">Arduino Uno</div>
+          <div class="pins" id="cdPins"></div>
+          <div id="cdExtra"></div>
+          <div class="sensorrow" id="cdSensor" hidden></div>
+        </div>
+      </div>
+      <div class="box pane">
+        <label class="sr" for="codeBox">Your code</label>
+        <textarea class="editor" id="codeBox" spellcheck="false"></textarea>
+        <div class="runbar">
+          <button class="btn go" id="btnRun">Upload</button>
+          <button class="btn sm" id="btnReset">Reset</button>
+          <button class="btn sm" id="btnBriefC">Briefing</button>
+          <p class="verdict" id="cdVerdict">Write your code, then upload it to the board.</p>
+        </div>
+        <div class="serial" id="serial">SERIAL MONITOR -- Serial.println() output lands here.</div>
+      </div>
+    </div>
+  </section>
+</main>
+<div class="brief" id="brief" hidden>
+  <div class="brief-card">
+    <div class="brief-head"><span id="bfKicker">LEVEL 1-1</span><span id="bfTag"></span></div>
+    <div class="brief-body">
+      <h2 id="bfTitle">First Light</h2>
+      <h4>Lesson</h4><p id="bfLesson"></p>
+      <h4>Your job</h4><p id="bfObj"></p>
+      <button class="btn go" id="bfGo">Start building</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   BREADBOARD MODEL
+   Rows 0,1 = top + / - rails.  Rows 2-6 = A-E (top half).
+   Rows 7-11 = F-J (bottom half).  Rows 12,13 = bottom + / - rails.
+   Every column's top half is one node; its bottom half is another.
+   The ravine between E and F is why those two are separate.
+   ============================================================ */
+const ROWY=[16,38, 78,100,122,144,166, 212,234,256,278,300, 340,362];
+const ROWLBL=["+","−","A","B","C","D","E","F","G","H","I","J","+","−"];
+const BB_H=380, HOLE=22, XPAD=30;
+const xOf=c=>XPAD+c*HOLE, yOf=r=>ROWY[r];
+function nodeOf(r,c){
+  if(r===0||r===12) return "P";
+  if(r===1||r===13) return "G";
+  return (r<=6?"T":"B")+c;
+}
+const sameHole=(a,b)=>a.r===b.r&&a.c===b.c;
+
+const COMP={
+  jump:{name:"Jumper",pins:2,rail:true,conduct:()=>true},
+  res:{name:"Resistor",pins:2,conduct:()=>true},
+  led:{name:"LED",pins:2,dir:true,conduct:()=>true},
+  sw:{name:"Switch",pins:2,rail:true,conduct:c=>!!c.on,toggle:true},
+  btn:{name:"Button",pins:2,rail:true,conduct:c=>!!c.on,toggle:true},
+  buz:{name:"Buzzer",pins:2,conduct:()=>true},
+  diode:{name:"Diode",pins:2,dir:true,conduct:()=>true},
+  cap:{name:"Capacitor",pins:2,conduct:()=>false},
+  ldr:{name:"Light sensor",pins:2,conduct:(c,env)=>!!env.bright},
+  npn:{name:"Transistor",pins:3},
+  not:{name:"NOT chip",pins:2,gate:"not"},
+  and:{name:"AND chip",pins:3,gate:"and"},
+  or:{name:"OR chip",pins:3,gate:"or"},
+  xor:{name:"XOR chip",pins:3,gate:"xor"}
+};
+const nodesOf=c=>c.holes.map(h=>nodeOf(h.r,h.c));
+
+/* ---------- simulation: who reaches +, who reaches - ---------- */
+function flood(starts,edges,reverse){
+  const adj={};
+  const add=(x,y)=>{(adj[x]=adj[x]||[]).push(y)};
+  edges.forEach(([a,b,dir])=>{
+    if(!dir){ add(a,b); add(b,a); }
+    else if(!reverse) add(a,b);
+    else add(b,a);
+  });
+  const seen=new Set(starts), q=[...starts];
+  while(q.length){ const n=q.pop();
+    (adj[n]||[]).forEach(m=>{ if(!seen.has(m)){ seen.add(m); q.push(m); } }); }
+  return seen;
+}
+const eqSet=(a,b)=>a.size===b.size&&[...a].every(x=>b.has(x));
+
+function simulate(comps,env){
+  env=env||{};
+  if(env.off){ comps.forEach(c=>{ c.hot=false; c.out=false; });
+    const e=new Set(); return {live:e,gnd:e,railP:e,railG:e}; }
+  let live=new Set(["P"]), gnd=new Set(["G"]);
+  for(let pass=0;pass<16;pass++){
+    const edges=[], srcs=new Set(["P"]);
+    comps.forEach(c=>{
+      const D=COMP[c.t], n=nodesOf(c);
+      if(D.gate){
+        let out;
+        if(D.gate==="not") out=!live.has(n[0]);
+        else{ const a=live.has(n[0]), b=live.has(n[1]);
+          out = D.gate==="and" ? (a&&b) : D.gate==="or" ? (a||b) : (a!==b); }
+        c.out=out;
+        if(out) srcs.add(n[n.length-1]);
+        return;
+      }
+      if(c.t==="npn"){ c.out=live.has(n[0]); if(c.out) edges.push([n[1],n[2],0]); return; }
+      if(!D.conduct(c,env)) return;
+      edges.push([n[0],n[1],D.dir?1:0]);
+    });
+    const nl=flood(srcs,edges,false), ng=flood(["G"],edges,true);
+    const stable=eqSet(nl,live)&&eqSet(ng,gnd);
+    live=nl; gnd=ng;
+    if(stable) break;
+  }
+  comps.forEach(c=>{
+    const D=COMP[c.t], n=nodesOf(c);
+    if(D.gate){ c.hot=!!c.out; return; }
+    if(c.t==="npn"){ c.hot=!!c.out&&live.has(n[1])&&gnd.has(n[2]); return; }
+    if(!D.conduct(c,env)){ c.hot=false; return; }
+    c.hot = D.dir ? (live.has(n[0])&&gnd.has(n[1]))
+                  : ((live.has(n[0])&&gnd.has(n[1]))||(live.has(n[1])&&gnd.has(n[0])));
+  });
+  // strips tied straight to a rail (through jumpers and switches only) colour red or blue;
+  // anything powered through a load is amber.
+  const pure=[];
+  comps.forEach(c=>{ const D=COMP[c.t];
+    if(D.rail&&D.conduct(c,env)) pure.push([nodesOf(c)[0],nodesOf(c)[1],0]); });
+  const railP=flood(["P"],pure,false), railG=flood(["G"],pure,false);
+  return {live,gnd,railP,railG};
+}
+
+/* ---------- drawing ---------- */
+const WIRECOL=["#E5332A","#1F6FD0","#F2C400","#2E9E4F","#8B5CF6","#E06C1E"];
+function compSVG(c,i){
+  const D=COMP[c.t], hot=c.hot, ink="#17161C";
+  const pts=c.holes.map(h=>({x:xOf(h.c),y:yOf(h.r)}));
+  const mid={x:pts.reduce((s,p)=>s+p.x,0)/pts.length, y:pts.reduce((s,p)=>s+p.y,0)/pts.length};
+  const leg=(p,col)=>`<line x1="${p.x}" y1="${p.y}" x2="${mid.x}" y2="${mid.y}" stroke="${col||"#9A9AAC"}" stroke-width="3.4" stroke-linecap="round"/>`;
+  const glow=hot?` filter="url(#hot)"`:"";
+  const lit="#FFD54A";
+  let s=`<g class="cmp" data-i="${i}"${glow}>`;
+  if(c.t==="jump"){
+    const col=WIRECOL[(c.col||0)%WIRECOL.length];
+    s+=`<line x1="${pts[0].x}" y1="${pts[0].y}" x2="${pts[1].x}" y2="${pts[1].y}" stroke="${ink}" stroke-width="8" stroke-linecap="round"/>`;
+    s+=`<line x1="${pts[0].x}" y1="${pts[0].y}" x2="${pts[1].x}" y2="${pts[1].y}" stroke="${hot?lit:col}" stroke-width="5" stroke-linecap="round"/>`;
+  } else if(c.t==="res"){
+    s+=leg(pts[0],hot?lit:"#B8B8C6")+leg(pts[1],hot?lit:"#B8B8C6");
+    s+=`<rect x="${mid.x-13}" y="${mid.y-7}" width="26" height="14" fill="${hot?"#FFE9A8":"#D9BE8A"}" stroke="${ink}" stroke-width="3"/>`;
+    s+=`<rect x="${mid.x-7}" y="${mid.y-7}" width="3.5" height="14" fill="${ink}"/>`;
+    s+=`<rect x="${mid.x-1}" y="${mid.y-7}" width="3.5" height="14" fill="#C8542A"/>`;
+    s+=`<rect x="${mid.x+5}" y="${mid.y-7}" width="3.5" height="14" fill="${ink}"/>`;
+  } else if(c.t==="led"){
+    s+=leg(pts[0],hot?lit:"#B8B8C6")+leg(pts[1],hot?lit:"#B8B8C6");
+    s+=`<circle cx="${mid.x}" cy="${mid.y}" r="11" fill="${hot?lit:"#5C5C6B"}" stroke="${ink}" stroke-width="3"/>`;
+    if(hot) s+=`<g stroke="#fff" stroke-width="2.4" stroke-linecap="round">
+      <line x1="${mid.x+12}" y1="${mid.y-12}" x2="${mid.x+19}" y2="${mid.y-19}"/>
+      <line x1="${mid.x+16}" y1="${mid.y-5}" x2="${mid.x+24}" y2="${mid.y-5}"/>
+      <line x1="${mid.x+5}" y1="${mid.y-16}" x2="${mid.x+5}" y2="${mid.y-24}"/></g>`;
+    s+=`<circle cx="${pts[0].x}" cy="${pts[0].y}" r="3.6" fill="${ink}"/>`;
+  } else if(c.t==="diode"){
+    s+=leg(pts[0],hot?lit:"#B8B8C6")+leg(pts[1],hot?lit:"#B8B8C6");
+    s+=`<rect x="${mid.x-12}" y="${mid.y-8}" width="24" height="16" fill="${hot?"#6B5B2A":"#2A2838"}" stroke="${ink}" stroke-width="3"/>`;
+    s+=`<rect x="${mid.x+5}" y="${mid.y-8}" width="4" height="16" fill="#E8E8F0"/>`;
+  } else if(c.t==="cap"){
+    s+=leg(pts[0],"#B8B8C6")+leg(pts[1],"#B8B8C6");
+    s+=`<rect x="${mid.x-11}" y="${mid.y-11}" width="22" height="22" rx="2" fill="#2F6FBF" stroke="${ink}" stroke-width="3"/>`;
+    s+=`<rect x="${mid.x-4}" y="${mid.y-11}" width="4" height="22" fill="#CFE2FF"/>`;
+  } else if(c.t==="buz"){
+    s+=leg(pts[0],hot?lit:"#B8B8C6")+leg(pts[1],hot?lit:"#B8B8C6");
+    s+=`<circle cx="${mid.x}" cy="${mid.y}" r="13" fill="${hot?"#4A4430":"#23222E"}" stroke="${ink}" stroke-width="3"/>`;
+    s+=`<circle cx="${mid.x}" cy="${mid.y}" r="3.4" fill="${hot?lit:"#8A88A0"}"/>`;
+    if(hot) s+=`<path d="M${mid.x+16} ${mid.y-10} a13 13 0 0 1 0 20" fill="none" stroke="${lit}" stroke-width="2.6"/>`;
+  } else if(c.t==="ldr"){
+    s+=leg(pts[0],hot?lit:"#B8B8C6")+leg(pts[1],hot?lit:"#B8B8C6");
+    s+=`<circle cx="${mid.x}" cy="${mid.y}" r="12" fill="${hot?"#F0D98A":"#6E6A4A"}" stroke="${ink}" stroke-width="3"/>`;
+    s+=`<path d="M${mid.x-7} ${mid.y+4} l4 -8 l4 8 l4 -8" fill="none" stroke="${ink}" stroke-width="2.6"/>`;
+  } else if(c.t==="sw"||c.t==="btn"){
+    const on=!!c.on;
+    s+=leg(pts[0],on&&hot?lit:"#B8B8C6")+leg(pts[1],on&&hot?lit:"#B8B8C6");
+    s+=`<rect x="${mid.x-13}" y="${mid.y-11}" width="26" height="22" fill="${on?(hot?"#FFD54A":"#C9C7D6"):"#4C4A5C"}" stroke="${ink}" stroke-width="3"/>`;
+    if(c.t==="sw") s+=`<rect x="${on?mid.x+1:mid.x-10}" y="${mid.y-7}" width="9" height="14" fill="${ink}"/>`;
+    else s+=`<circle cx="${mid.x}" cy="${mid.y}" r="6" fill="${ink}"/>`;
+  } else if(c.t==="npn"){
+    pts.forEach(p=>s+=leg(p,hot?lit:"#B8B8C6"));
+    s+=`<path d="M${mid.x-13} ${mid.y+11} a13 13 0 0 1 26 0 Z" fill="${c.out?"#4A4430":"#23222E"}" stroke="${ink}" stroke-width="3"/>`;
+    s+=`<text x="${mid.x}" y="${mid.y+8}" text-anchor="middle" font-size="9" font-family="monospace" fill="${c.out?lit:"#8A88A0"}">NPN</text>`;
+  } else if(COMP[c.t].gate){
+    pts.forEach(p=>s+=leg(p,c.out?lit:"#B8B8C6"));
+    const w=c.t==="not"?34:40;
+    s+=`<rect x="${mid.x-w/2}" y="${mid.y-13}" width="${w}" height="26" fill="${c.out?"#4A4430":"#1E1D29"}" stroke="${ink}" stroke-width="3"/>`;
+    s+=`<rect x="${mid.x-w/2}" y="${mid.y-13}" width="${w}" height="5" fill="${ink}"/>`;
+    s+=`<text x="${mid.x}" y="${mid.y+7}" text-anchor="middle" font-size="10" font-family="monospace" font-weight="bold" fill="${c.out?lit:"#A9A6C0"}">${c.t.toUpperCase()}</text>`;
+  }
+  s+="</g>";
+  return s;
+}
+
+function boardSVG(L,comps,sim,pend){
+  const cols=L.cols, W=XPAD*2+(cols-1)*HOLE+XPAD;
+  const live=sim?sim.live:new Set();
+  const railP=sim?sim.railP:new Set(), railG=sim?sim.railG:new Set();
+  let s=`<svg viewBox="0 0 ${W} ${BB_H}" class="bb" role="img" aria-label="Breadboard">
+    <defs><filter id="hot" filterUnits="userSpaceOnUse" x="-40" y="-40" width="${W+80}" height="${BB_H+80}">
+      <feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+  s+=`<rect x="2" y="2" width="${W-4}" height="${BB_H-4}" fill="#FFFBEF" stroke="#17161C" stroke-width="4"/>`;
+  // rail stripes
+  const railY=[[0,"#E5332A"],[1,"#1F6FD0"],[12,"#E5332A"],[13,"#1F6FD0"]];
+  railY.forEach(([r,col])=>{
+    s+=`<line x1="${XPAD-14}" y1="${yOf(r)}" x2="${W-XPAD+14}" y2="${yOf(r)}" stroke="${col}" stroke-width="2.5" opacity=".7"/>`;
+    s+=`<text x="${XPAD-22}" y="${yOf(r)+4}" font-size="12" font-family="monospace" fill="${col}" text-anchor="middle">${ROWLBL[r]}</text>`;
+  });
+  // ravine
+  s+=`<rect x="4" y="${(yOf(6)+yOf(7))/2-13}" width="${W-8}" height="26" fill="#EFE7D2" stroke="#17161C" stroke-width="2"/>`;
+  // row letters
+  for(let r=2;r<=11;r++)
+    s+=`<text x="${XPAD-22}" y="${yOf(r)+4}" font-size="11" font-family="monospace" fill="#8A8698" text-anchor="middle">${ROWLBL[r]}</text>`;
+  // column numbers
+  for(let c=0;c<cols;c++) if(c%5===0||c===cols-1)
+    s+=`<text x="${xOf(c)}" y="${yOf(6)+22}" font-size="10" font-family="monospace" fill="#8A8698" text-anchor="middle">${c+1}</text>`;
+  // holes
+  const taken={};
+  comps.forEach((c,i)=>c.holes.forEach(h=>taken[h.r+"_"+h.c]=i));
+  for(let r=0;r<14;r++) for(let c=0;c<cols;c++){
+    const n=nodeOf(r,c), x=xOf(c), y=yOf(r);
+    let fill="#2B2A38";
+    if(railP.has(n)) fill="#E5332A";
+    else if(railG.has(n)) fill="#1F6FD0";
+    else if(live.has(n)) fill="#E8A32C";
+    const isPend=pend&&pend.holes.some(h=>h.r===r&&h.c===c);
+    s+=`<rect class="hole" data-r="${r}" data-c="${c}" x="${x-5}" y="${y-5}" width="10" height="10"
+         fill="${fill}" stroke="${isPend?"#FFD54A":"rgba(0,0,0,.35)"}" stroke-width="${isPend?3:1}"/>`;
+  }
+  comps.forEach((c,i)=>{ s+=compSVG(c,i); });
+  return s+"</svg>";
+}
+</script>
+
+<script>
+"use strict";
+/* Layout legend: . build here  # blocked  B battery  L target LED  A/C/D switches */
+/* fixed-part helpers: [row,col] holes. rows 0/12=+rail 1/13=-rail 2-6=A-E 7-11=F-J */
+const LEDT=c=>({t:"led",pins:[[2,c],[7,c]],target:true});
+const SWT=(a,b)=>({t:"sw",pins:[[2,a],[2,b]],input:true});
+const SWB=(a,b)=>({t:"sw",pins:[[7,a],[7,b]],input:true});
+const BTNT=(a,b)=>({t:"btn",pins:[[2,a],[2,b]],input:true});
+const TT2=t=>[{in:[true,true],out:[t[0]]},{in:[true,false],out:[t[1]]},
+              {in:[false,true],out:[t[2]]},{in:[false,false],out:[t[3]]}];
+const TT3=rows=>rows.map(r=>({in:[!!r[0],!!r[1],!!r[2]],out:[!!r[3]]}));
+const W3FIX=[SWT(1,4),SWT(6,9),SWB(1,4),LEDT(18)];
+const W2FIX=[SWT(2,5),SWB(2,5),LEDT(14)];
+const LOGIC=["jump","res","and","or","not","xor"];
+
+const LEVELS=[
+/* ============ WORLD 1 — BREADBOARD BASICS ============ */
+ {id:"P1",stage:0,kind:"circuit",title:"First Light",xp:40,teaches:"The complete loop",cols:10,
+  obj:"Light the LED. Current has to leave the + rail, pass through a resistor and the LED, and get back to the − rail.",
+  hint:"<b>Every column is a strip.</b> The five holes in one column above the gap are all the same connection, so a leg in A4 and a jumper in C4 are joined. Run + → resistor → LED → − and the loop closes.",
+  tools:["jump","res"],fixed:[LEDT(6)],truth:[{in:[],out:[true]}]},
+
+ {id:"P2",stage:0,kind:"circuit",title:"The Long Way",xp:45,teaches:"Jumpers between strips",cols:14,
+  obj:"This LED's legs sit at opposite ends of the board. Reach both of them.",
+  hint:"<b>Different column means a different strip.</b> A jumper is how you carry a connection sideways — one leg in the strip you have, the other in the strip you need.",
+  tools:["jump","res"],fixed:[{t:"led",pins:[[2,2],[11,11]],target:true}],truth:[{in:[],out:[true]}]},
+
+ {id:"P3",stage:0,kind:"circuit",title:"Switch It On",xp:50,teaches:"A switch in series",cols:12,
+  obj:"Wire the switch into the path so the LED lights only while the switch is closed.",
+  hint:"<b>In series means in line.</b> The current must have no way around the switch — click the switch on the board to flip it and watch both cases.",
+  tools:["jump","res"],fixed:[SWT(3,6),LEDT(9)],
+  truth:[{in:[true],out:[true]},{in:[false],out:[false]}]},
+
+ {id:"P4",stage:0,kind:"circuit",title:"Two In Parallel",xp:55,teaches:"Parallel branches",cols:14,
+  obj:"Light both LEDs at once. Each one needs its own way home to the − rail.",
+  hint:"<b>Parallel means side by side.</b> Feed both anodes from the same + strip and give each cathode its own jumper to −.",
+  tools:["jump","res"],fixed:[LEDT(5),LEDT(9)],truth:[{in:[],out:[true,true]}]},
+
+ {id:"P5",stage:0,kind:"circuit",title:"Two In Series",xp:60,teaches:"Series chains",cols:14,
+  obj:"These two LEDs are already chained nose to tail. Feed the first one and ground the last one so both light.",
+  hint:"<b>One path, two parts.</b> The same current runs through both LEDs, so you only need one connection at each end of the chain.",
+  tools:["jump","res"],
+  fixed:[{t:"led",pins:[[2,4],[7,4]],target:true},{t:"led",pins:[[8,4],[8,8]],target:true}],
+  truth:[{in:[],out:[true,true]}]},
+
+ {id:"P6",stage:0,kind:"circuit",title:"Make Some Noise",xp:60,teaches:"Branching outputs",cols:14,
+  obj:"Light the LED and run the buzzer at the same time, both powered from the same rails.",
+  hint:"<b>Tap off the same strip.</b> The buzzer gets its own branch from + to −, running alongside the LED rather than through it.",
+  tools:["jump","res","buz"],fixed:[LEDT(10)],truth:[{in:[],out:[true]}],
+  requires:[{p:"buz",msg:"The LED is lit, but no current is reaching the buzzer."}]},
+
+ {id:"P7",stage:0,kind:"circuit",title:"Mind The Polarity",xp:65,teaches:"Diodes, direction",cols:14,
+  obj:"Put a diode in the path to the LED. A diode only passes current one way — get it facing the right direction.",
+  hint:"<b>First hole you click is the anode</b>, the end current goes in. The striped end is the cathode and must point toward the LED. Backwards and nothing flows at all.",
+  tools:["jump","res","diode"],fixed:[LEDT(10)],truth:[{in:[],out:[true]}],
+  requires:[{p:"diode",msg:"Nothing is flowing through the diode — it's probably facing backwards."}]},
+
+ {id:"P8",stage:0,kind:"circuit",title:"Blocked",xp:65,teaches:"Capacitors block DC",cols:14,
+  obj:"The resistor and capacitor are already fitted, but the LED stays dark. Work out why, then get current to it anyway.",
+  hint:"<b>A capacitor won't pass steady current.</b> It charges up and then stops, so it's a dead end for DC. Leave it in place and jumper straight past it.",
+  tools:["jump","res"],
+  fixed:[{t:"res",pins:[[0,2],[2,5]]},{t:"cap",pins:[[3,5],[3,8]]},LEDT(8)],
+  truth:[{in:[],out:[true]}]},
+
+ {id:"P9",stage:0,kind:"circuit",title:"Light Sensor",xp:70,teaches:"Light-dependent resistors",cols:14,light:true,
+  obj:"Wire the light sensor in so the LED lights when the room is BRIGHT and goes out when it's DARK.",
+  hint:"<b>An LDR drops its resistance in light.</b> In the dark it's nearly an open gap. Put it in series with the LED and use the Light button to test both.",
+  tools:["jump","res","ldr"],fixed:[LEDT(10)],
+  truth:[{in:[true],out:[true]},{in:[false],out:[false]}]},
+
+ {id:"P10",stage:0,kind:"circuit",title:"Two Parts Flat",xp:70,teaches:"Lean building",cols:10,
+  obj:"Light the LED using only 2 parts — and one of them has to be a resistor.",
+  hint:"<b>Go straight at it.</b> One resistor from the + rail to the anode strip, one jumper from the cathode strip to −. Nothing else fits in the budget.",
+  tools:["jump","res"],fixed:[LEDT(5)],truth:[{in:[],out:[true]}],maxParts:2,
+  requires:[{p:"res",msg:"It lights, but no resistor is carrying the current — the LED needs one in series."}]},
+
+/* ============ WORLD 2 — SWITCHING & LOGIC ============ */
+ {id:"G1",stage:1,kind:"circuit",title:"Push To Light",xp:55,teaches:"Momentary buttons",cols:14,
+  obj:"Wire the pushbutton so the LED lights while the button is pressed.",
+  hint:"<b>A button is just a switch</b> that only stays closed while you hold it. Click it on the board to press and release.",
+  tools:["jump","res"],fixed:[BTNT(3,6),LEDT(10)],
+  truth:[{in:[true],out:[true]},{in:[false],out:[false]}]},
+
+ {id:"G2",stage:1,kind:"circuit",title:"Transistor Switch",xp:90,teaches:"Transistors as switches",cols:16,
+  obj:"Use the transistor so the switch controls the LED without the LED's current ever passing through the switch.",
+  hint:"<b>Three legs: base, collector, emitter</b> — click them in that order. A live base lets current flow from collector to emitter. Feed the base from the switch, put the collector under the LED, and run the emitter to −.",
+  tools:["jump","res","npn"],fixed:[SWT(2,5),LEDT(12)],
+  truth:[{in:[true],out:[true]},{in:[false],out:[false]}]},
+
+ {id:"G3",stage:1,kind:"circuit",title:"NOT Chip",xp:70,teaches:"Inverters",cols:16,
+  obj:"Drop in a NOT chip so the LED is lit when the switch is OPEN and dark when it's CLOSED.",
+  hint:"<b>Click the input hole first, then the output hole.</b> The chip pushes its own current out of the output strip, so the LED only needs a path from there down to −.",
+  tools:["jump","res","not"],fixed:[SWT(2,5),LEDT(12)],
+  truth:[{in:[false],out:[true]},{in:[true],out:[false]}]},
+
+ {id:"G4",stage:1,kind:"circuit",title:"AND Chip",xp:75,teaches:"AND gate",cols:16,
+  obj:"Light the LED only when BOTH switches are closed.",
+  hint:"<b>Click input A, then input B, then the output.</b> Feed each switch into one input strip and take the answer off the output strip.",
+  tools:["jump","res","and"],fixed:W2FIX,truth:TT2([true,false,false,false])},
+
+ {id:"G5",stage:1,kind:"circuit",title:"OR Chip",xp:75,teaches:"OR gate",cols:16,
+  obj:"Light the LED when EITHER switch is closed.",
+  hint:"<b>Same wiring as the AND bench</b> — only the chip changes. One live input is enough for OR.",
+  tools:["jump","res","or"],fixed:W2FIX,truth:TT2([true,true,true,false])},
+
+ {id:"G6",stage:1,kind:"circuit",title:"XOR Chip",xp:80,teaches:"XOR gate",cols:16,
+  obj:"Light the LED when exactly one switch is closed — never both.",
+  hint:"<b>Exclusive or.</b> This is the chip behind a stairway light: either switch flips the lamp, but both together cancel out.",
+  tools:["jump","res","xor"],fixed:W2FIX,truth:TT2([false,true,true,false])},
+
+ {id:"G7",stage:1,kind:"circuit",title:"NAND",xp:85,teaches:"Chaining chips",cols:16,
+  obj:"Light the LED in every case EXCEPT when both switches are closed.",
+  hint:"<b>Two chips in a row.</b> Run the AND's output strip straight into the NOT's input strip, and take the LED off the NOT.",
+  tools:LOGIC,fixed:W2FIX,truth:TT2([false,true,true,true])},
+
+ {id:"G8",stage:1,kind:"circuit",title:"NOR",xp:85,teaches:"Chaining chips",cols:16,
+  obj:"Light the LED only when NEITHER switch is closed.",
+  hint:"<b>Same shape as NAND</b>, with an OR doing the asking before the NOT flips the answer.",
+  tools:LOGIC,fixed:W2FIX,truth:TT2([false,false,false,true])},
+
+ {id:"G9",stage:1,kind:"circuit",title:"XNOR",xp:90,teaches:"Agreement detector",cols:16,
+  obj:"Light the LED only when the two switches AGREE — both closed, or both open.",
+  hint:"<b>XOR finds disagreement.</b> Invert it and you get a detector that fires when the switches match.",
+  tools:LOGIC,fixed:W2FIX,truth:TT2([true,false,false,true])},
+
+ {id:"G10",stage:1,kind:"circuit",title:"Double Negative",xp:80,teaches:"Buffers",cols:16,
+  obj:"Use TWO NOT chips so the LED simply follows the switch — on when closed, off when open.",
+  hint:"<b>Flip it, then flip it back.</b> Two inverters cancel out. Real boards use this to push a tired signal further down a long wire.",
+  tools:["jump","res","not"],fixed:[SWT(2,5),LEDT(14)],
+  truth:[{in:[true],out:[true]},{in:[false],out:[false]}]},
+
+/* ============ WORLD 3 — BUILD CHALLENGES ============ */
+ {id:"X1",stage:2,kind:"circuit",title:"The Vault Lock",xp:110,challenge:true,teaches:"Mixed logic",cols:20,
+  obj:"The LED may light ONLY when switch A is closed and switch B is open.",
+  hint:"<b>Flip one input, then compare.</b> Run B through a NOT chip first, then feed A and the flipped B into an AND.",
+  tools:LOGIC,fixed:[SWT(1,4),SWB(1,4),LEDT(18)],truth:TT2([false,true,false,false])},
+
+ {id:"X2",stage:2,kind:"circuit",title:"All Three Keys",xp:120,challenge:true,teaches:"Three inputs",cols:20,
+  obj:"Three switches, one LED. It lights only when all three are closed at once.",
+  hint:"<b>A chip takes two inputs, so chain them.</b> Combine the first two switches, then feed that answer into a second chip along with the third.",
+  tools:LOGIC,fixed:W3FIX,
+  truth:TT3([[1,1,1,1],[1,1,0,0],[1,0,1,0],[0,1,1,0],[1,0,0,0],[0,0,0,0]])},
+
+ {id:"X3",stage:2,kind:"circuit",title:"Any Door Open",xp:120,challenge:true,teaches:"Three-input OR",cols:20,
+  obj:"An alarm that lights if ANY of the three switches is closed. Only all-open leaves it dark.",
+  hint:"<b>Same chain as the last level</b>, with a more forgiving pair of chips.",
+  tools:LOGIC,fixed:W3FIX,
+  truth:TT3([[0,0,0,0],[1,0,0,1],[0,1,0,1],[0,0,1,1],[1,1,0,1],[1,1,1,1]])},
+
+ {id:"X4",stage:2,kind:"circuit",title:"Guarded Entry",xp:140,challenge:true,teaches:"NOR plus AND",cols:20,
+  obj:"Switch C is the key. The LED lights only when C is closed AND both A and B are open.",
+  hint:"<b>Three chips.</b> OR the two guard switches, NOT that to get \"both quiet\", then AND it with the key.",
+  tools:LOGIC,fixed:W3FIX,
+  truth:TT3([[0,0,1,1],[1,0,1,0],[0,1,1,0],[1,1,1,0],[0,0,0,0],[1,1,0,0]])},
+
+ {id:"X5",stage:2,kind:"circuit",title:"Odd One Out",xp:160,challenge:true,teaches:"Parity",cols:20,
+  obj:"Light the LED when an ODD number of switches are closed — one, or all three. Two closed stays dark.",
+  hint:"<b>Parity is XOR, twice.</b> XOR the first pair, then XOR that with the third. Real hardware checks data for errors exactly this way.",
+  tools:LOGIC,fixed:W3FIX,
+  truth:TT3([[1,0,0,1],[0,1,0,1],[0,0,1,1],[1,1,0,0],[1,0,1,0],[0,1,1,0],[1,1,1,1],[0,0,0,0]])},
+
+ {id:"X6",stage:2,kind:"circuit",title:"Master Switch",xp:130,challenge:true,teaches:"OR into AND",cols:20,
+  obj:"C is the master power. The LED lights only when C is closed AND at least one of A or B is closed too.",
+  hint:"<b>Ask the easy question first.</b> OR the two ordinary switches, then AND that answer with the master.",
+  tools:LOGIC,fixed:W3FIX,
+  truth:TT3([[1,0,1,1],[0,1,1,1],[1,1,1,1],[0,0,1,0],[1,1,0,0],[1,0,0,0],[0,0,0,0]])},
+
+ {id:"X7",stage:2,kind:"circuit",title:"Override",xp:130,challenge:true,teaches:"AND into OR",cols:20,
+  obj:"The LED lights when BOTH A and B are closed — or whenever C is closed on its own.",
+  hint:"<b>The reverse of the last level.</b> AND the pair, then OR that result with the override switch.",
+  tools:LOGIC,fixed:W3FIX,
+  truth:TT3([[1,1,0,1],[0,0,1,1],[1,0,0,0],[0,1,0,0],[1,1,1,1],[0,0,0,0],[1,0,1,1]])},
+
+ {id:"X8",stage:2,kind:"circuit",title:"Safety Interlock",xp:150,challenge:true,teaches:"NAND plus AND",cols:20,
+  obj:"C is the run switch. The machine runs only when C is closed and A and B are NOT both closed at once.",
+  hint:"<b>Build a NAND, then gate it.</b> AND the two hand switches, NOT that to get \"not both\", then AND with the run switch.",
+  tools:LOGIC,fixed:W3FIX,
+  truth:TT3([[1,1,1,0],[1,0,1,1],[0,1,1,1],[0,0,1,1],[1,0,0,0],[0,0,0,0],[1,1,0,0]])},
+
+ {id:"X9",stage:2,kind:"circuit",title:"Even Count",xp:160,challenge:true,teaches:"Even parity",cols:20,
+  obj:"The opposite of Odd One Out: light the LED when an EVEN number of switches are closed — none, or exactly two.",
+  hint:"<b>Build the odd detector, then flip it.</b> XOR, XOR, and one last NOT before the LED.",
+  tools:LOGIC,fixed:W3FIX,
+  truth:TT3([[0,0,0,1],[1,1,0,1],[1,0,1,1],[0,1,1,1],[1,0,0,0],[0,1,0,0],[0,0,1,0],[1,1,1,0]])},
+
+ {id:"X10",stage:2,kind:"circuit",title:"Blackout",xp:150,challenge:true,teaches:"Three-input NOR",cols:20,
+  obj:"Light the LED only when all three switches are open. One closed switch anywhere kills it.",
+  hint:"<b>Any-door-open, inverted.</b> OR all three down the chain, then finish with a NOT.",
+  tools:LOGIC,fixed:W3FIX,
+  truth:TT3([[0,0,0,1],[1,0,0,0],[0,1,0,0],[0,0,1,0],[1,1,0,0],[1,1,1,0]])},
+/* ============ WORLD 4 — ARDUINO ============ */
+ {id:"A1",stage:3,kind:"code",title:"Blink",xp:80,board:"Arduino Uno",teaches:"digitalWrite, delay",
+  obj:"Turn the LED on pin 13 on for 1 second, then off for 1 second, forever.",
+  hint:"<b>digitalWrite(pin, HIGH)</b> turns a pin on, LOW turns it off, and <b>delay(ms)</b> waits. Everything in loop() repeats forever.",
+  pins:[{n:13,label:"PIN 13"}],
+  start:`void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  // on, wait, off, wait\n  \n}`,
+  check:t=>evenBlink(t,13,1000,1000),
+  fail:"Not a 1 second on / 1 second off rhythm yet. Check both delay values."},
+
+ {id:"A2",stage:3,kind:"code",title:"Heartbeat",xp:85,board:"Arduino Uno",teaches:"Sequencing",
+  obj:"Beat a heartbeat on pin 13: two quick flashes (100ms on, 100ms off, twice) then a 700ms rest. Repeat forever.",
+  hint:"<b>Order is everything.</b> Write the two quick flashes one after the other, then end with one long delay while the LED is off.",
+  pins:[{n:13,label:"PIN 13"}],
+  start:`void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  // flash, flash, rest\n  \n}`,
+  check:t=>heartbeat(t,13),
+  fail:"Not a heartbeat yet — the test wants two 100ms flashes, then a 700ms gap before it repeats."},
+
+ {id:"A3",stage:3,kind:"code",title:"Night Light",xp:90,board:"Arduino Uno",teaches:"Sensors, if/else",
+  obj:"Read the light sensor on A0. When the room goes dark (below 400) switch the LED on pin 9 on; when it's bright, switch it off.",
+  hint:"<b>analogRead(A0)</b> returns 0 (pitch dark) to 1023 (bright). Wrap the decision in <b>if / else</b>. The bench dims the room partway through every run.",
+  pins:[{n:9,label:"PIN 9"}],sensor:"light",
+  start:`void setup() {\n  pinMode(9, OUTPUT);\n}\n\nvoid loop() {\n  int light = analogRead(A0);\n  // dark? light the LED. bright? turn it off.\n  \n  delay(100);\n}`,
+  check:t=>nightLight(t),
+  fail:"The LED isn't tracking the sensor. It must be ON below 400 and OFF above it."},
+
+ {id:"A4",stage:3,kind:"code",title:"Push To Light",xp:95,board:"Arduino Uno",teaches:"digitalRead, input",
+  obj:"Read the button on pin 2. While it's held down, the LED on pin 13 is on. Let go and it goes off.",
+  hint:"<b>digitalRead(2)</b> returns HIGH while the button is pressed. You can feed that reading straight into digitalWrite, or branch on it with an if.",
+  pins:[{n:13,label:"PIN 13"}],button:true,sensor:"button",
+  start:`void setup() {\n  pinMode(2, INPUT);\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  int pressed = digitalRead(2);\n  // make the LED follow the button\n  \n  delay(20);\n}`,
+  check:t=>followButton(t),
+  fail:"The LED isn't following the button. Watch the board — it should light exactly while the button is down."},
+
+ {id:"A5",stage:3,kind:"code",title:"Traffic Light",xp:120,board:"Arduino Uno",challenge:true,teaches:"Multi-pin sequencing",
+  obj:"Run a traffic light: red (pin 11) for 2s, then green (pin 13) for 2s, then yellow (pin 12) for 0.5s, then repeat. Exactly one lamp on at a time.",
+  hint:"<b>Turn the old lamp off before the new one on.</b> Each phase is three steps: switch pins, then one delay. The cycle must start on red.",
+  pins:[{n:11,label:"RED",cls:"red"},{n:12,label:"YELLOW"},{n:13,label:"GREEN",cls:"grn"}],
+  start:`void setup() {\n  pinMode(11, OUTPUT);\n  pinMode(12, OUTPUT);\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  // red 2000, green 2000, yellow 500\n  \n}`,
+  check:t=>trafficLight(t),
+  fail:"The sequence isn't right yet. Check the order (red, green, yellow), the timings, and that only one lamp is lit at a time."},
+
+ {id:"A6",stage:3,kind:"code",title:"Back And Forth",xp:90,board:"Arduino Uno",teaches:"Two outputs at once",
+  obj:"Two LEDs that take turns: pin 13 on while pin 12 is off for half a second, then swap. Never both on together.",
+  hint:"<b>Set both pins every phase.</b> Turn one on and the other off in the same breath, then delay 500 — otherwise they drift out of step.",
+  pins:[{n:13,label:"PIN 13"},{n:12,label:"PIN 12",cls:"grn"}],
+  start:`void setup() {\n  pinMode(12, OUTPUT);\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  // 13 on / 12 off, wait, then swap\n  \n}`,
+  check:t=>altBlink(t,13,12),
+  fail:"They aren't alternating on a 500ms beat. Each phase should set BOTH pins before the delay."},
+
+ {id:"A7",stage:3,kind:"code",title:"Toggle Latch",xp:130,board:"Arduino Uno",challenge:true,teaches:"State, edge detection",
+  obj:"Make the button latch: one press turns the LED on and it STAYS on after you let go. The next press turns it off.",
+  hint:"<b>Remember the last reading.</b> Keep two variables outside loop() — one for the LED state, one for what the button did last time — and only flip the state on the moment it changes from released to pressed.",
+  pins:[{n:13,label:"PIN 13"}],button:true,sensor:"button",
+  start:`int last = 0;\nint state = 0;\n\nvoid setup() {\n  pinMode(2, INPUT);\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  int pressed = digitalRead(2);\n  // flip state only when pressed goes 0 -> 1\n  \n  last = pressed;\n  digitalWrite(13, state);\n  delay(20);\n}`,
+  check:t=>toggleLatch(t),
+  fail:"Not latching yet. The LED should stay on after the first press ends, then go off on the second press."},
+
+ {id:"A8",stage:3,kind:"code",title:"Count Up",xp:85,board:"Arduino Uno",teaches:"for loops, Serial",
+  obj:"Print the numbers 1 to 5 to the serial monitor, one every 300ms, then start over.",
+  hint:"<b>A for loop counts for you.</b> Use <b>Serial.println(i)</b> inside it — the output shows up in the black panel under the editor.",
+  pins:[],
+  start:`void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  // count 1 to 5, printing each one\n  \n}`,
+  check:t=>countUp(t),
+  fail:"The monitor should read 1, 2, 3, 4, 5 in order. Check your loop's start and end values."},
+
+ {id:"A9",stage:3,kind:"code",title:"Dark Alarm",xp:100,board:"Arduino Uno",teaches:"One test, two outputs",
+  obj:"When the sensor goes dark, switch on BOTH the lamp on pin 9 and the buzzer on pin 8. When it's bright, both go quiet.",
+  hint:"<b>One if, two actions.</b> Both digitalWrite calls go inside the same branch so the lamp and buzzer can never disagree.",
+  pins:[{n:9,label:"LAMP 9"},{n:8,label:"BUZZER 8",cls:"red"}],sensor:"light",
+  start:`void setup() {\n  pinMode(8, OUTPUT);\n  pinMode(9, OUTPUT);\n}\n\nvoid loop() {\n  int light = analogRead(A0);\n  // dark? lamp and buzzer on. bright? both off.\n  \n  delay(100);\n}`,
+  check:t=>darkAlarm(t),
+  fail:"Both outputs must follow the sensor together — check pin 8 as well as pin 9."},
+
+ {id:"A10",stage:3,kind:"code",title:"Chase",xp:120,board:"Arduino Uno",challenge:true,teaches:"Running patterns",
+  obj:"Run a chase across three LEDs: pin 11, then 12, then 13, 300ms each, one lit at a time, looping forever.",
+  hint:"<b>Each step turns the previous lamp off.</b> Three phases, one delay per phase, and the last phase has to hand back to the first cleanly.",
+  pins:[{n:11,label:"PIN 11",cls:"red"},{n:12,label:"PIN 12"},{n:13,label:"PIN 13",cls:"grn"}],
+  start:`void setup() {\n  pinMode(11, OUTPUT);\n  pinMode(12, OUTPUT);\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  // 11, then 12, then 13 — 300ms each\n  \n}`,
+  check:t=>chase(t),
+  fail:"The chase isn't stepping 11 to 12 to 13 at 300ms, with only one lamp lit at a time."},
+
+/* ============ WORLD 5 — ESP32 ============ */
+ {id:"E1",stage:4,kind:"code",title:"Touch Piano",xp:110,board:"ESP32",teaches:"Capacitive touch",
+  obj:"Three copper pads, three colors. Touching T0 turns the strip red, T1 green, T2 blue. Nothing touched means the strip is dark.",
+  hint:"<b>touchRead(pin)</b> returns a small number (under 30) when a finger is on the pad and a big one when it isn't. <b>setStrip(r, g, b)</b> pushes a color; setStrip(0,0,0) goes dark.",
+  pins:[],strip:true,pads:[0,1,2],
+  start:`void setup() {\n  // touch pins need no setup\n}\n\nvoid loop() {\n  if (touchRead(T0) < 30) {\n    setStrip(255, 0, 0);\n  }\n  // now handle T1 (green) and T2 (blue),\n  // and go dark when nothing is touched\n  \n  delay(50);\n}`,
+  check:t=>touchPiano(t),
+  fail:"The colors don't line up with the pads yet. Each pad needs its own color, and the strip must go dark when nothing is touched."},
+
+ {id:"E2",stage:4,kind:"code",title:"Fade Up",xp:110,board:"ESP32",teaches:"PWM, analogWrite",
+  obj:"Fade the LED on pin 9 smoothly from fully off to fully bright, then snap back to dark and do it again.",
+  hint:"<b>analogWrite(pin, value)</b> takes 0–255 instead of just on/off — that's PWM. Use a <b>for</b> loop to climb through the values with a short delay on each step.",
+  pins:[{n:9,label:"PIN 9"}],analog:true,
+  start:`void setup() {\n  pinMode(9, OUTPUT);\n}\n\nvoid loop() {\n  // climb from 0 to 255 in small steps\n  for (int v = 0; v <= 255; v = v + 5) {\n    \n  }\n}`,
+  check:t=>fadeUp(t),
+  fail:"No smooth ramp yet. The test wants at least 20 rising steps that start near 0 and finish near 255."},
+
+ {id:"E3",stage:4,kind:"code",title:"Night Strip",xp:115,board:"ESP32",teaches:"Sensor to RGB",
+  obj:"Use the light sensor on A0. When the room goes dark, glow the strip warm white. When it's bright, the strip is off.",
+  hint:"<b>Same if/else as the night light</b>, but the output is a color instead of a pin. Warm white is a lot of red, some green, a little blue.",
+  pins:[],strip:true,sensor:"light",
+  start:`void setup() {\n}\n\nvoid loop() {\n  int light = analogRead(A0);\n  // dark? warm white. bright? off.\n  \n  delay(100);\n}`,
+  check:t=>nightStrip(t),
+  fail:"The strip isn't following the sensor. It must glow while the reading is under 400 and be dark above it."},
+
+ {id:"E4",stage:4,kind:"code",title:"Smart Lamp",xp:150,board:"ESP32",challenge:true,teaches:"Combining conditions",
+  obj:"The strip may glow ONLY when two things are true at once: the room is dark AND pad T1 is being touched. Any other moment, it stays dark.",
+  hint:"<b>Two conditions, one decision.</b> Combine them with <b>&&</b> inside a single if. Watch the bench — the dark window and the T1 window only overlap for part of the run.",
+  pins:[],strip:true,pads:[0,1,2],sensor:"light",
+  start:`void setup() {\n}\n\nvoid loop() {\n  int light = analogRead(A0);\n  // glow only when it is dark AND T1 is touched\n  \n  delay(50);\n}`,
+  check:t=>smartLamp(t),
+  fail:"Not there yet. The strip must be dark unless the sensor reads under 400 and T1 is touched at the same moment."},
+
+ {id:"E5",stage:4,kind:"code",title:"Breathe",xp:120,board:"ESP32",teaches:"Two loops, up and down",
+  obj:"Make pin 9 breathe: fade smoothly all the way up to 255, then smoothly all the way back down to 0, over and over.",
+  hint:"<b>Two for loops, back to back.</b> The second one counts the other way — start at 255 and subtract until you reach 0.",
+  pins:[{n:9,label:"PIN 9"}],analog:true,
+  start:`void setup() {\n  pinMode(9, OUTPUT);\n}\n\nvoid loop() {\n  for (int v = 0; v <= 255; v = v + 5) {\n    analogWrite(9, v);\n    delay(10);\n  }\n  // now fade it back down\n  \n}`,
+  check:t=>breathe(t),
+  fail:"Only one direction so far. The test wants a long rise AND a long fall every cycle."},
+
+ {id:"E6",stage:4,kind:"code",title:"Touch Brighten",xp:115,board:"ESP32",teaches:"Touch driving PWM",
+  obj:"Keep the LED on pin 9 dim (about 30) normally. While pad T0 is touched, drive it to full brightness (255).",
+  hint:"<b>Touch in, brightness out.</b> One if / else, and an analogWrite in each branch — not digitalWrite, since you need two different levels, not on and off.",
+  pins:[{n:9,label:"PIN 9"}],analog:true,pads:[0,1,2],
+  start:`void setup() {\n  pinMode(9, OUTPUT);\n}\n\nvoid loop() {\n  // T0 touched? full brightness. otherwise dim.\n  \n  delay(50);\n}`,
+  check:t=>touchBright(t),
+  fail:"The brightness isn't switching with the pad. Check that the dim value is low and the bright value is near 255."},
+
+ {id:"E7",stage:4,kind:"code",title:"Touch Toggle",xp:140,board:"ESP32",challenge:true,teaches:"Latching on touch",
+  obj:"Touching pad T0 toggles the strip. One touch turns it on and it stays on after you lift your finger.",
+  hint:"<b>The latch from Toggle Latch, on a touch pad.</b> Track the previous touch state and only flip when it changes from not-touched to touched.",
+  pins:[],strip:true,pads:[0,1,2],
+  start:`int last = 0;\nint state = 0;\n\nvoid setup() {\n}\n\nvoid loop() {\n  int touched = 0;\n  if (touchRead(T0) < 30) {\n    touched = 1;\n  }\n  // flip state only when touched goes 0 -> 1\n  \n  last = touched;\n  delay(50);\n}`,
+  check:t=>touchToggle(t),
+  fail:"The strip isn't latching. It should stay lit after the finger leaves T0, not switch off with it."},
+
+ {id:"E8",stage:4,kind:"code",title:"Rainbow Cycle",xp:120,board:"ESP32",teaches:"Colour sequencing",
+  obj:"Cycle the strip through red, then green, then blue — 400ms each — and loop forever.",
+  hint:"<b>Three setStrip calls, three delays.</b> Keep each colour pure: full on one channel and zero on the other two, so each step is clearly its own colour.",
+  pins:[],strip:true,
+  start:`void setup() {\n}\n\nvoid loop() {\n  // red, green, blue — 400ms each\n  \n}`,
+  check:t=>rainbow(t),
+  fail:"The cycle isn't hitting red, then green, then blue at 400ms each."}
+];
+
+/* Short plain-language briefing shown before every level. */
+const LESSON={
+P1:"Electricity will only move if it has a complete loop to travel around. It leaves the + rail, goes through your parts, and has to arrive back at the − rail. If the loop is broken anywhere, nothing moves — not even a little. A breadboard's job is to let you build that loop without any soldering: the holes are already connected underneath in strips, and you just drop legs into the right strips.",
+P2:"Inside a breadboard, each column above the gap is one strip of five holes wired together. Legs in A4, B4 and C4 are all the same connection. But column 4 and column 5 are completely separate, so to carry a connection sideways you need a jumper wire: one end in the strip you have, the other in the strip you want.",
+P3:"A switch is a gap you can open and close on purpose. Put it in series — meaning directly in the path, with no way around it — and it controls everything downstream. Open the switch and the loop is broken, so the LED dies instantly. That is all a light switch on your wall is doing.",
+P4:"Parallel means two parts each get their own separate path from + to −, side by side. The current splits at the junction, part of it going down each branch. Because each branch is its own complete loop, one can fail or be unplugged and the other keeps working — which is why the lights in your house are wired this way.",
+P5:"Series means parts are in a single-file line, so the exact same current flows through every one of them. There is only one loop. That also means a break anywhere kills all of them at once — the reason one dead bulb used to take out a whole string of old Christmas lights.",
+P6:"A battery does not get 'used up' by the first part it reaches. You can tap more branches off the same two rails and run several things at once. Each new branch just needs its own complete path from + back to −.",
+P7:"A diode is a one-way valve for electricity. Current can flow from its anode to its cathode, but not backwards — the stripe on the real part marks the cathode end. LEDs are diodes too, which is why an LED put in backwards simply never lights up. In this lab the first hole you click is always the anode.",
+P8:"A capacitor stores charge on two metal plates with a gap between them. Because of that gap, steady DC current cannot pass through it — it fills up and then stops. Capacitors are brilliant at smoothing out bumps in power, but as a path from + to − they are a dead end.",
+P9:"An LDR, or light-dependent resistor, changes how much it fights the current depending on how bright it is. In the light its resistance drops and current passes easily; in the dark it clamps down and almost nothing gets through. That one part is enough to make a circuit notice the world around it.",
+P10:"Every part you add is a part someone has to pay for and solder. Engineers get judged on doing the job with less, not more. An LED also needs a resistor in series with it — without one it pulls too much current and burns itself out in seconds.",
+
+G1:"A pushbutton is a switch that only stays closed while something is pressing it. Let go and the spring inside pops it back open. That makes buttons right for 'do it now' jobs like a doorbell, and wrong for anything you want to stay on by itself.",
+G2:"A transistor is an electrical valve with three legs: base, collector and emitter. A tiny bit of current at the base lets a much larger current flow from collector to emitter. That is how a weak signal controls a strong one — and stacking millions of these switches on one chip is literally how computers are built.",
+G3:"A logic chip takes signals in and pushes an answer out. The NOT chip is the simplest one: it gives you the opposite of whatever it is handed. Power in means nothing out; nothing in means power out. Note that the answer comes out of the chip with its own push, so the output strip becomes a new source.",
+G4:"AND is strict. It has two inputs, and it only turns its output on when both of them are on. Think of a microwave that will only run when the door is shut and the start button is pressed — either one alone does nothing.",
+G5:"OR is generous. Its output turns on if either input is on, or if both are. A car that beeps when the driver's door is open or the passenger's door is open is running an OR.",
+G6:"XOR means exclusive or: on when exactly one input is on, and off when both are. This is the gate behind a hallway light with a switch at each end — flipping either one changes the lamp, but flipping both puts it right back.",
+G7:"You can feed one chip's answer straight into the next chip's input. An AND followed by a NOT gives you NAND — 'not both'. NAND is special: you can build every other gate in existence out of nothing but NAND chips, which is why factories make them by the billion.",
+G8:"NOR is an OR with its answer flipped: it is on only when nothing is on. Like NAND, NOR on its own is enough to build any logic circuit. Chaining a question chip into a NOT chip is a pattern you will use over and over.",
+G9:"XNOR is XOR flipped, so it fires when the two inputs agree — both on, or both off. Circuits use it to compare things: feed in two signals and it tells you whether they match.",
+G10:"Two NOT chips in a row cancel each other out, so the signal comes back out the same as it went in. That sounds pointless until you remember signals get weak crossing a long wire. Each chip pushes out a fresh, full-strength copy, so a pair of inverters acts as a booster.",
+
+X1:"Most real logic is small gates wired into bigger ideas. When a rule says one thing must be true and another must be false, flip the second one with a NOT first, then AND the two together. Breaking a sentence into gates like this is the whole job.",
+X2:"A chip only has two inputs, so to handle three switches you chain them: combine the first two, then feed that answer in alongside the third. Any number of inputs can be handled this way, two at a time.",
+X3:"Alarm logic is usually OR logic: any one sensor going off should trip the whole thing. Chain ORs together and a single closed switch anywhere reaches the output.",
+X4:"Real safety circuits combine a permission with a block. Here the key switch gives permission and the two guards can veto it. Build the veto first — OR the guards, invert it to mean 'both quiet' — then AND that with the key.",
+X5:"Parity means counting whether something is odd or even. XOR does it naturally: chain XORs together and the output is on exactly when an odd number of inputs are on. Computers attach a parity bit to data so the other end can tell if something got scrambled.",
+X6:"A master switch gates everything else. Work out what the ordinary switches are saying first, then AND the whole thing with the master so it can shut the lot down on its own.",
+X7:"An override does the opposite of a master switch: it forces the output on no matter what the rest say. That means OR at the end — the override gets its own way straight into the final gate.",
+X8:"A two-hand interlock is a real safety rule on dangerous machines: certain combinations must be forbidden. Build the forbidden case with an AND, invert it so it reads 'not that', then AND it with the run switch.",
+X9:"If XOR chains detect odd, inverting the result detects even. Flipping the answer at the very end is often far easier than redesigning the whole circuit — always check whether the thing you want is just the opposite of something simpler.",
+X10:"'None of them' is the same as 'not any of them'. Build the any-detector with ORs, then put one NOT at the end. Rewriting a rule into a shape you already know how to build is the most useful trick in logic design.",
+
+A1:"Now you write the instructions instead of wiring them. Arduino code has two parts: setup() runs once when the board powers on, and loop() runs over and over forever. digitalWrite turns a pin on or off, and delay makes the board wait, doing nothing, for a number of milliseconds — 1000 of them make a second.",
+A2:"The board runs your lines strictly in order, top to bottom, then starts loop() again. So a rhythm is just the right on, off and wait steps written in the right sequence. Getting a pattern right is mostly about the order and the waits, not clever code.",
+A3:"analogRead doesn't give you on or off — it gives a number from 0 to 1023 describing how much of something there is. An if statement lets the board compare that number against a threshold you choose and act differently on each side. That is the whole idea of a sensor: turn the world into a number, then decide.",
+A4:"So far pins have been outputs that the board drives. digitalRead makes a pin an input instead, so the board can look at what is happening to it. Reading a button is the simplest way for a program to notice a person.",
+A5:"Real systems control several outputs that must stay coordinated. The safest habit is to turn the old one off in the same breath as turning the new one on, so there is never a moment where two are lit. Think in phases: set the pins, then wait.",
+A6:"When two outputs must stay opposite, set both of them every single phase. If you only ever change one, they drift out of step the moment anything unexpected happens. Being explicit costs one extra line and saves a lot of debugging.",
+A7:"A variable declared outside loop() keeps its value between runs — that is the board's memory. To latch something you need two memories: what the state is, and what the button was doing last time. Acting only on the change from released to pressed is called edge detection, and without it one press gets counted hundreds of times.",
+A8:"A for loop repeats a block a set number of times and counts for you. Serial.println sends text back to your computer, which is how you see what a board is thinking — it has no screen of its own. Printing values is the main way engineers debug hardware.",
+A9:"One decision can drive as many outputs as you like. Put every action for a situation inside the same branch of the if, and they can never disagree with each other — a lamp that is on while its buzzer is silent usually means that rule got broken.",
+A10:"A chase is a pattern that moves. Each step hands over to the next, and the last step has to hand back to the first cleanly or the loop stutters when it repeats. Patterns like this are how signs, indicators and LED strips create the illusion of motion.",
+
+E1:"The ESP32 can sense a finger directly. touchRead measures how much charge a pad holds, and a fingertip changes that measurement a lot — a low number means someone is touching it. No button, no moving parts, just a piece of copper and a wire.",
+E2:"A digital pin can only be fully on or fully off. PWM fakes the in-between by flicking the pin on and off thousands of times a second — more on-time looks brighter to your eye. analogWrite takes a number from 0 to 255 to set that mix, and it is how every dimmer and motor-speed control works.",
+E3:"Sensing and showing can be joined together: read a number, decide, then output a colour instead of a simple on or off. An RGB LED mixes red, green and blue light to make any colour, so your decision can now carry a lot more meaning than one lamp could.",
+E4:"Real devices rarely act on just one thing. The && operator means 'and' — both conditions have to be true at the same moment for the branch to run. Combining a sensor reading with a human action is exactly how a smart device decides when it is actually wanted.",
+E5:"To breathe, a light has to climb and then fall. One for loop counts up and a second counts down, which means changing the step from adding to subtracting. Smooth motion in code is almost always two opposite loops taking turns.",
+E6:"The same PWM idea works with a sensor driving it. Instead of picking brightness yourself, let the touch pad choose between two levels. Input decides, output responds — that pattern is the heart of every interactive device.",
+E7:"Latching on a touch pad is the same edge-detection trick as the button latch, just with a different sensor. Remember the previous reading, act only on the moment it changes, and store the result in a variable that survives between loops.",
+E8:"Animation is a sequence with timing. Three colours and three waits give you a cycle, and because loop() repeats forever it runs until the power goes out. Keeping each colour pure — one channel full, the others at zero — makes each step unmistakable."
+};
+LEVELS.forEach(l=>{ l.lesson=LESSON[l.id]||""; });
+
+const STAGES=[
+ {name:"Power Up",note:"Getting current from A to B",neon:"var(--blue)"},
+ {name:"Logic Core",note:"Circuits that make decisions",neon:"var(--red)"},
+ {name:"Build Challenges",note:"Fixed bin, one goal, no walkthrough",neon:"var(--green)"},
+ {name:"Arduino Code",note:"Now you program the board",neon:"var(--brick)"},
+ {name:"ESP32 Code",note:"Touch, colour and sensors",neon:"var(--purple)"}
+];
+const RANKS=[[0,"Apprentice"],[260,"Tinkerer"],[700,"Circuit Builder"],[1300,"Logic Smith"],
+             [2000,"Board Engineer"],[2900,"Firmware Hand"],[3800,"Lab Lead"]];
+</script>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const KEY="cirkutry.lab.v2";
+let S={xp:0,done:{}};
+try{ const r=localStorage.getItem(KEY); if(r) S=Object.assign(S,JSON.parse(r)); }catch(e){}
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
+function rank(){ let i=0; for(let k=0;k<RANKS.length;k++) if(S.xp>=RANKS[k][0]) i=k; return i; }
+function paintRank(){
+  const i=rank(), next=RANKS[i+1];
+  $("rankName").textContent=RANKS[i][1].toUpperCase();
+  $("rankNum").textContent=i+1;
+  $("xpNow").textContent=String(S.xp).padStart(6,"0");
+  $("xpNext").textContent=next?next[0]:"MAX";
+  $("starsNow").textContent=LEVELS.filter(l=>S.done[l.id]).length;
+  $("starsAll").textContent=LEVELS.length;
+  const base=RANKS[i][0], span=next?next[0]-base:1;
+  $("xpBar").style.width=(next?Math.min(100,((S.xp-base)/span)*100):100)+"%";
+}
+function worldLabel(l){
+  const same=LEVELS.filter(x=>x.stage===l.stage);
+  return (l.stage+1)+"-"+(same.indexOf(l)+1);
+}
+function unlocked(i){ return i===0 || !!S.done[LEVELS[i-1].id]; }
+function toast(html,ms){
+  const t=$("toast"); t.innerHTML=html; t.classList.add("show");
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),ms||2800);
+}
+function show(which){
+  ["screen-map","screen-level","screen-code"].forEach(id=>$(id).hidden=(id!==which));
+  window.scrollTo(0,0);
+}
+
+function renderMap(){
+  const host=$("stages"); host.innerHTML="";
+  STAGES.forEach((st,si)=>{
+    const list=LEVELS.map((l,i)=>({l,i})).filter(o=>o.l.stage===si);
+    if(!list.length)return;
+    const sec=document.createElement("div");
+    sec.className="world"; sec.style.setProperty("--wc",st.neon);
+    const doneN=list.filter(o=>S.done[o.l.id]).length;
+    sec.innerHTML='<div class="world-h"><span class="world-tag">WORLD '+(si+1)+'</span>'+
+      '<h2>'+st.name.toUpperCase()+'</h2>'+
+      '<span class="world-meta">&#9733; '+doneN+'/'+list.length+'</span></div>'+
+      '<div class="tiles"></div>';
+    const tiles=sec.querySelector(".tiles");
+    list.forEach(({l,i})=>{
+      const open=unlocked(i), done=!!S.done[l.id];
+      const b=document.createElement("button");
+      b.className="tile"+(open?"":" locked")+(done?" done":"");
+      if(!open) b.disabled=true;
+      const badge = l.kind==="code" ? '<span class="tile-badge code">CODE</span>'
+        : l.challenge ? '<span class="tile-badge">BOSS</span>' : "";
+      b.innerHTML='<div class="tile-head"><span class="tile-num">'+worldLabel(l)+'</span>'+badge+'</div>'+
+        '<div class="tile-body"><h3>'+(open?l.title:"? ? ?")+'</h3>'+
+        '<p>'+(open?l.obj:"Clear the block before this one to open it.")+'</p>'+
+        '<span class="tile-foot">'+(open?l.teaches.toUpperCase()+" &#9679; "+l.xp+" PTS":"LOCKED")+'</span></div>';
+      b.addEventListener("click",()=>{ if(open) openLevel(i); });
+      tiles.appendChild(b);
+    });
+    host.appendChild(sec);
+  });
+}
+/* ---------------- breadboard bench ---------------- */
+let COMPS=[], LV=null, TOOL="jump", PEND=null, ENV={bright:true}, JCOL=0, POWERED=false;
+
+function loadLevel(l){
+  COMPS=(l.fixed||[]).map(f=>({t:f.t,holes:f.pins.map(p=>({r:p[0],c:p[1]})),on:!!f.on,
+    lock:true,input:!!f.input,target:!!f.target,col:0}));
+  ENV={bright:true}; PEND=null; JCOL=0; TOOL=l.tools[0]; POWERED=false;
+}
+function openLevel(i){
+  const l=LEVELS[i]; LV=l; LV._i=i;
+  $("screen-level").style.setProperty("--wc",STAGES[l.stage].neon);
+  $("screen-code").style.setProperty("--wc",STAGES[l.stage].neon);
+  if(l.kind==="code") return openCode(l);
+  loadLevel(l);
+  $("lvKicker").textContent=(l.challenge?"BOSS ":"LEVEL ")+worldLabel(l);
+  $("lvTitle").textContent=l.title;
+  $("lvObj").textContent=l.obj;
+  $("lvHint").innerHTML=l.hint;
+  renderPal(); renderBoard();
+  $("verdict").className="verdict";
+  $("verdict").textContent="Board is cold. Build it, then press Run power.";
+  show("screen-level");
+  if(!S.done[l.id]) showBrief(l);
+}
+function toolIcon(t){
+  const n=COMP[t].pins;
+  const holes=n===3?[{r:2,c:0},{r:2,c:2},{r:2,c:4}]:[{r:2,c:0},{r:2,c:2}];
+  const fake={t:t,holes:holes,on:true,out:false,hot:false,col:2};
+  const vb=n===3?"16 58 112 42":"16 58 70 42";
+  return `<svg viewBox="${vb}" class="ticon">${compSVG(fake,-1)}</svg>`;
+}
+function renderPal(){
+  const host=$("pal"); host.innerHTML="";
+  LV.tools.concat(["erase"]).forEach(t=>{
+    const b=document.createElement("button");
+    b.className="tool"+(t===TOOL?" on":"");
+    const label=t==="erase"?"Erase":COMP[t].name;
+    const icon=t==="erase"
+      ?'<svg viewBox="0 0 40 40" class="ticon"><path d="M10 26 L22 14 L32 24 L22 34 L14 34 Z" fill="none" stroke="#17161C" stroke-width="3" stroke-linejoin="round"/><line x1="8" y1="34" x2="34" y2="34" stroke="#17161C" stroke-width="3" stroke-linecap="round"/></svg>'
+      :toolIcon(t);
+    b.innerHTML=icon+`<span>${label}</span>`;
+    b.addEventListener("click",()=>{ TOOL=t; PEND=null; renderPal(); renderBoard(); });
+    host.appendChild(b);
+  });
+  const lt=$("lightBtn");
+  if(lt) lt.hidden=!LV.light;
+}
+function partCount(){ return COMPS.filter(c=>!c.lock).length; }
+function renderBoard(){
+  const sim=simulate(COMPS,{bright:ENV.bright,off:!POWERED});
+  const host=$("board");
+  host.innerHTML=boardSVG(LV,COMPS,sim,PEND);
+  host.querySelectorAll(".hole").forEach(el=>{
+    el.addEventListener("click",()=>holeClick(+el.dataset.r,+el.dataset.c));
+  });
+  host.querySelectorAll(".cmp").forEach(el=>{
+    const i=+el.dataset.i;
+    el.addEventListener("click",ev=>{ ev.stopPropagation(); compClick(i); });
+  });
+  const ph=$("palH");
+  if(ph) ph.textContent = LV.maxParts!=null
+    ? "Parts bin — "+partCount()+" / "+LV.maxParts+" used" : "Parts bin";
+  const lb=$("lightBtn");
+  if(lb){ lb.hidden=!LV.light; lb.textContent="Light: "+(ENV.bright?"BRIGHT":"DARK"); }
+  const pb=$("btnCheck");
+  if(pb) pb.textContent = POWERED ? "Cut power" : "Run power";
+}
+function showBrief(l){
+  $("bfKicker").textContent=(l.challenge?"BOSS ":"LEVEL ")+worldLabel(l);
+  $("bfTag").textContent=l.teaches.toUpperCase();
+  $("bfTitle").textContent=l.title;
+  $("bfLesson").textContent=l.lesson||"";
+  $("bfObj").textContent=l.obj;
+  const b=$("brief");
+  b.style.setProperty("--wc",STAGES[l.stage].neon);
+  b.hidden=false;
+  $("bfGo").focus();
+}
+function say(msg,cls){ const v=$("verdict"); v.className="verdict"+(cls?" "+cls:""); v.textContent=msg; }
+function takenAt(r,c){
+  for(let i=0;i<COMPS.length;i++)
+    if(COMPS[i].holes.some(h=>h.r===r&&h.c===c)) return i;
+  return -1;
+}
+function compClick(i){
+  const c=COMPS[i];
+  if(TOOL==="erase"){
+    if(c.lock){ say("That part is fixed on this board — you can't remove it."); return; }
+    COMPS.splice(i,1); PEND=null; POWERED=false; renderBoard(); say("Part removed. Power is off."); return;
+  }
+  if(COMP[c.t].toggle){ c.on=!c.on; renderBoard();
+    say((COMP[c.t].name)+" is now "+(c.on?"closed":"open")+"."); return; }
+  say("Pick the Erase tool to take that out.");
+}
+function holeClick(r,c){
+  const i=takenAt(r,c);
+  if(i>=0) return compClick(i);
+  if(TOOL==="erase"){ say("Click the part you want to remove."); return; }
+  const need=COMP[TOOL].pins;
+  if(!PEND||PEND.t!==TOOL) PEND={t:TOOL,holes:[]};
+  PEND.holes.push({r:r,c:c});
+  if(PEND.holes.length<need){
+    renderBoard();
+    const left=need-PEND.holes.length;
+    say("Now click "+left+" more hole"+(left>1?"s":"")+" to finish the "+COMP[TOOL].name.toLowerCase()+".");
+    return;
+  }
+  const ns=PEND.holes.map(h=>nodeOf(h.r,h.c));
+  if(new Set(ns).size<ns.length){
+    PEND=null; renderBoard();
+    say("Both legs landed on the same strip, so nothing would flow through it. Try two different columns.","no");
+    return;
+  }
+  COMPS.push({t:TOOL,holes:PEND.holes,on:TOOL==="sw"||TOOL==="btn",lock:false,col:JCOL++});
+  PEND=null; POWERED=false; renderBoard(); say("Placed. Press Run power when the build is ready.");
+}
+function checkCircuit(){
+  const ins=COMPS.filter(c=>c.input), tgts=COMPS.filter(c=>c.target);
+  const savedOn=ins.map(c=>c.on), savedBright=ENV.bright;
+  let pass=true, failRow=null;
+  for(const row of LV.truth){
+    const vals=row.in.slice();
+    if(LV.light) ENV.bright=!!vals[vals.length-1];
+    ins.forEach((c,k)=>{ if(vals.length) c.on=!!vals[k]; });
+    simulate(COMPS,ENV);
+    const got=tgts.map(t=>!!t.hot);
+    if(got.some((v,k)=>v!==!!row.out[k])){ pass=false; failRow=row; break; }
+  }
+  let overBudget=null, missing=null;
+  if(pass&&LV.maxParts!=null&&partCount()>LV.maxParts){ pass=false; overBudget=partCount(); }
+  if(pass&&LV.requires){
+    for(const r of LV.requires){
+      if(!COMPS.some(c=>c.t===r.p&&c.hot)){ pass=false; missing=r; break; }
+    }
+  }
+  ins.forEach((c,k)=>c.on=savedOn[k]); ENV.bright=savedBright;
+  if(pass){
+    say("Current flows"+(LV.truth.length>1?" — every switch position behaves.":". The LED is lit."),"ok");
+    award(LV);
+  }else if(overBudget!=null){
+    say(`That works, but you used ${overBudget} parts and the limit is ${LV.maxParts}. Find a leaner build.`,"no");
+  }else if(missing){
+    say(missing.msg,"no");
+  }else{
+    const names=["A","B","C"];
+    const desc = failRow&&failRow.in.length
+      ? failRow.in.map((b,k)=>(LV.light&&k===failRow.in.length-1)?("light "+(b?"bright":"dark")):(names[k]+(b?" closed":" open"))).join(", ")
+      : null;
+    say(desc ? `Not yet — with ${desc}, the target should be ${failRow.out[0]?"lit":"dark"}.`
+             : "Not yet — no current is reaching the target. Trace the path from + all the way back to −.","no");
+  }
+  renderBoard();
+}
+function award(l){
+  if(S.done[l.id]){ toast("<b>ALREADY CLEARED</b>You kept this star the first time through."); return; }
+  const r0=rank();
+  S.done[l.id]=true; S.xp+=l.xp; save(); paintRank();
+  const i=LEVELS.findIndex(x=>x.id===l.id), nxt=LEVELS[i+1];
+  const up = rank()>r0 ? ` LEVEL UP — you are now ${RANKS[rank()][1]}.` : "";
+  toast(`<b>STAR GET! +${l.xp}</b>${l.title} cleared.${up}${nxt?` Next up: ${nxt.title}.`:" That was the final level."}`,3600);
+  renderMap();
+}
+</script>
+
+<script>
+"use strict";
+const BUDGET=6000;
+function toJS(src){
+  return src
+    .replace(/^\s*#include.*$/gm,"")
+    .replace(/\bvoid\s+(setup|loop)\s*\(\s*\)/g,"function $1()")
+    .replace(/\bfor\s*\(\s*(unsigned\s+)?(int|long|float|double|byte|char)\s+/g,"for (let ")
+    .replace(/\b(unsigned\s+)?(int|long|float|double|bool|boolean|byte|char)\s+(\w+)\s*=/g,"let $3 =")
+    .replace(/\bSerial\s*\.\s*begin\s*\([^)]*\)\s*;?/g,"")
+    .replace(/\bSerial\s*\.\s*print(ln)?\s*\(/g,"__log(")
+    .replace(/\bHIGH\b/g,"1").replace(/\bLOW\b/g,"0")
+    .replace(/\bOUTPUT\b/g,"'out'").replace(/\bINPUT(_PULLUP)?\b/g,"'in'")
+    .replace(/\bA0\b/g,"'A0'")
+    .replace(/\bT([0-5])\b/g,"$1");
+}
+const WORKER_SRC=`
+self.onmessage=function(ev){
+ const {code,profile,budget}=ev.data;
+ let t=0, pins={}, apins={}, events=[], logs=[], strip=[0,0,0], iters=0;
+ const STOP={__stop:1};
+ const dark=function(){ return profile.indexOf("light")>=0 && t>=2000 && t<4000; };
+ const padOn=function(){ if(t>=1000&&t<2000)return 0; if(t>=2000&&t<3000)return 1; if(t>=3000&&t<4000)return 2; return -1; };
+ const btn=function(){ return ((t>=1000&&t<2000)||(t>=3000&&t<4000))?1:0; };
+ function pinMode(){}
+ function digitalWrite(p,v){ v=v?1:0; p=String(p);
+   if(pins[p]!==v){ pins[p]=v; events.push({t:t,pin:p,v:v}); } }
+ function analogWrite(p,v){ p=String(p); v=Math.max(0,Math.min(255,v|0));
+   if(apins[p]!==v){ apins[p]=v; events.push({t:t,apin:p,v:v}); } }
+ function digitalRead(p){ return profile.indexOf("button")>=0 ? btn() : 0; }
+ function analogRead(){ return dark()?180:820; }
+ function touchRead(p){ return p===padOn() ? 12 : 70; }
+ function setStrip(r,g,b){
+   r=Math.max(0,Math.min(255,r|0)); g=Math.max(0,Math.min(255,g|0)); b=Math.max(0,Math.min(255,b|0));
+   if(strip[0]!==r||strip[1]!==g||strip[2]!==b){ strip=[r,g,b]; events.push({t:t,strip:[r,g,b]}); } }
+ function delay(ms){ ms=+ms||0; if(ms<0)ms=0; t+=ms; if(t>budget) throw STOP; }
+ function delayMicroseconds(us){ delay((+us||0)/1000); }
+ function millis(){ return t; }
+ function __log(){ logs.push([].slice.call(arguments).join(" ")); if(logs.length>150) throw STOP; }
+ let err=null;
+ try{
+   const f=new Function("pinMode","digitalWrite","analogWrite","digitalRead","analogRead","touchRead",
+     "setStrip","delay","delayMicroseconds","millis","__log",
+     code+"\\nreturn {setup:typeof setup==='function'?setup:null,loop:typeof loop==='function'?loop:null};");
+   const m=f(pinMode,digitalWrite,analogWrite,digitalRead,analogRead,touchRead,setStrip,delay,delayMicroseconds,millis,__log);
+   if(!m.loop) throw new Error("No loop() function found.");
+   if(m.setup) m.setup();
+   while(t<=budget && iters++<6000) m.loop();
+ }catch(e){ if(!(e&&e.__stop)) err=(e&&e.message)?e.message:String(e); }
+ self.postMessage({events:events,logs:logs,err:err});
+};`;
+
+function runSketch(code,profile){
+  return new Promise(res=>{
+    let url,w,done=false;
+    const finish=r=>{ if(done)return; done=true; try{w.terminate()}catch(e){}
+      try{URL.revokeObjectURL(url)}catch(e){} res(r); };
+    try{
+      url=URL.createObjectURL(new Blob([WORKER_SRC],{type:"text/javascript"}));
+      w=new Worker(url);
+    }catch(e){ return res({events:[],logs:[],err:"Could not start the simulator."}); }
+    w.onmessage=e=>finish(e.data);
+    w.onerror=e=>finish({events:[],logs:[],err:(e&&e.message)||"Your code has a syntax error."});
+    setTimeout(()=>finish({events:[],logs:[],err:"That sketch ran too long — make sure loop() contains a delay()."}),2600);
+    w.postMessage({code:toJS(code),profile:profile||"",budget:BUDGET});
+  });
+}
+
+/* ---------- validators ---------- */
+const near=(a,b,tol)=>Math.abs(a-b)<=(tol||25);
+const pinEdges=(tl,p)=>tl.events.filter(e=>e.pin===String(p));
+function pinAt(tl,p,t){ let v=0; for(const e of tl.events){ if(e.pin===String(p)&&e.t<=t) v=e.v; } return v; }
+function anaAt(tl,p,t){ let v=0; for(const e of tl.events){ if(e.apin===String(p)&&e.t<=t) v=e.v; } return v; }
+function stripAt(tl,t){ let c=[0,0,0]; for(const e of tl.events){ if(e.strip&&e.t<=t) c=e.strip; } return c; }
+
+function evenBlink(tl,pin,on,off){
+  const e=pinEdges(tl,pin); if(e.length<4) return false;
+  const i=e.findIndex(x=>x.v===1); if(i<0||i+4>e.length) return false;
+  for(let k=0;k<2;k++){
+    const a=e[i+k*2], b=e[i+k*2+1], c=e[i+k*2+2];
+    if(!a||!b||!c||a.v!==1||b.v!==0||c.v!==1) return false;
+    if(!near(b.t-a.t,on)||!near(c.t-b.t,off)) return false;
+  }
+  return true;
+}
+function heartbeat(tl,pin){
+  const e=pinEdges(tl,pin); if(e.length<5) return false;
+  const i=e.findIndex(x=>x.v===1); if(i<0) return false;
+  const s=e.slice(i,i+5); if(s.length<5) return false;
+  if(!s.every((x,k)=>x.v===[1,0,1,0,1][k])) return false;
+  return near(s[1].t-s[0].t,100)&&near(s[2].t-s[1].t,100)&&
+         near(s[3].t-s[2].t,100)&&near(s[4].t-s[3].t,700,70);
+}
+const nightLight=tl=>pinAt(tl,9,1500)===0&&pinAt(tl,9,3000)===1&&pinAt(tl,9,5000)===0;
+const followButton=tl=>pinAt(tl,13,500)===0&&pinAt(tl,13,1500)===1&&
+                       pinAt(tl,13,2500)===0&&pinAt(tl,13,3500)===1&&pinAt(tl,13,4500)===0;
+function trafficLight(tl){
+  const only=(t,on)=>[11,12,13].every(p=>pinAt(tl,p,t)===(p===on?1:0));
+  return only(500,11)&&only(2500,13)&&only(4200,12)&&only(5000,11);
+}
+function fadeUp(tl){
+  const e=tl.events.filter(x=>x.apin==="9"); if(e.length<20) return false;
+  let run=1,best=1,lo=e[0].v,bestLo=lo,bestHi=lo;
+  for(let i=1;i<e.length;i++){
+    if(e[i].v>e[i-1].v){ run++; if(run>best){best=run;bestLo=lo;bestHi=e[i].v;} }
+    else { run=1; lo=e[i].v; }
+  }
+  return best>=20&&bestLo<=40&&bestHi>=215;
+}
+const nightStrip=tl=>stripAt(tl,1500).every(v=>v===0)&&stripAt(tl,3000).some(v=>v>100)&&
+                     stripAt(tl,5000).every(v=>v===0);
+function touchPiano(tl){
+  const dom=(c,k)=>c[k]>180&&c.filter((_,j)=>j!==k).every(v=>v<70);
+  return stripAt(tl,500).every(v=>v===0)&&dom(stripAt(tl,1500),0)&&
+         dom(stripAt(tl,2500),1)&&dom(stripAt(tl,3500),2)&&stripAt(tl,4600).every(v=>v===0);
+}
+const smartLamp=tl=>stripAt(tl,2500).some(v=>v>80)&&stripAt(tl,1500).every(v=>v===0)&&
+                    stripAt(tl,3500).every(v=>v===0)&&stripAt(tl,5000).every(v=>v===0);
+
+function altBlink(tl,a,b){
+  return pinAt(tl,a,250)===1&&pinAt(tl,b,250)===0&&
+         pinAt(tl,a,750)===0&&pinAt(tl,b,750)===1&&
+         pinAt(tl,a,1250)===1&&pinAt(tl,b,1750)===1;
+}
+const toggleLatch=tl=>pinAt(tl,13,500)===0&&pinAt(tl,13,1500)===1&&
+                      pinAt(tl,13,2500)===1&&pinAt(tl,13,3500)===0&&pinAt(tl,13,4500)===0;
+const countUp=tl=>["1","2","3","4","5"].every((n,i)=>String(tl.logs[i]).trim()===n);
+const darkAlarm=tl=>pinAt(tl,9,1500)===0&&pinAt(tl,8,1500)===0&&
+                    pinAt(tl,9,3000)===1&&pinAt(tl,8,3000)===1&&
+                    pinAt(tl,9,5000)===0&&pinAt(tl,8,5000)===0;
+function chase(tl){
+  const only=(t,on)=>[11,12,13].every(p=>pinAt(tl,p,t)===(p===on?1:0));
+  return only(150,11)&&only(450,12)&&only(750,13)&&only(1050,11);
+}
+function breathe(tl){
+  const e=tl.events.filter(x=>x.apin==="9"); if(e.length<30) return false;
+  let up=1,dn=1,bu=1,bd=1;
+  for(let i=1;i<e.length;i++){
+    if(e[i].v>e[i-1].v){ up++; dn=1; if(up>bu)bu=up; }
+    else if(e[i].v<e[i-1].v){ dn++; up=1; if(dn>bd)bd=dn; }
+  }
+  return bu>=15&&bd>=15;
+}
+const touchBright=tl=>anaAt(tl,9,500)<=60&&anaAt(tl,9,1500)>=200&&anaAt(tl,9,2500)<=60;
+const touchToggle=tl=>stripAt(tl,500).every(v=>v===0)&&stripAt(tl,1500).some(v=>v>80)&&
+                      stripAt(tl,2500).some(v=>v>80)&&stripAt(tl,5000).some(v=>v>80);
+function rainbow(tl){
+  const dom=(c,k)=>c[k]>150&&c.filter((_,j)=>j!==k).every(v=>v<90);
+  return dom(stripAt(tl,200),0)&&dom(stripAt(tl,600),1)&&dom(stripAt(tl,1000),2)&&dom(stripAt(tl,1400),0);
+}
+
+/* ---------- board UI ---------- */
+let PLAY=null;
+function openCode(l){
+  $("cdKicker").textContent=(l.challenge?"BOSS ":"LEVEL ")+worldLabel(l);
+  $("cdTitle").textContent=l.title;
+  $("cdObj").textContent=l.obj;
+  $("cdHint").innerHTML=l.hint;
+  $("cdBoardName").textContent=l.board;
+  $("codeBox").value=l.start;
+  $("serial").textContent="SERIAL MONITOR -- Serial.println() output lands here.";
+  $("cdVerdict").className="verdict";
+  $("cdVerdict").textContent="Write your code, then upload it to the board.";
+  const pins=$("cdPins"); pins.innerHTML="";
+  (l.pins||[]).forEach(p=>{
+    const d=document.createElement("div"); d.className="pin";
+    d.innerHTML=`<div class="bulb ${p.cls||""}" id="bulb${p.n}"></div><small>${p.label}</small>`;
+    pins.appendChild(d);
+  });
+  const extra=$("cdExtra"); extra.innerHTML="";
+  let bits="";
+  if(l.strip) bits+=`<div class="strip" id="strip">${Array.from({length:8},()=>'<i class="pxl"></i>').join("")}</div>`;
+  if(l.pads) bits+=`<div class="pads" id="pads">${l.pads.map(i=>`<div class="pad" id="pad${i}">T${i}</div>`).join("")}</div>`;
+  if(l.button) bits+=`<div class="pushbtn" id="pushbtn" style="margin-top:12px">PIN 2</div>`;
+  extra.innerHTML=bits;
+  const sen=$("cdSensor"); sen.hidden=!l.sensor||l.sensor==="button";
+  if(l.sensor==="light") sen.innerHTML='<span>Light sensor A0:</span><b id="senVal" style="color:var(--cyan)">820</b><span id="senWord">bright</span>';
+  stopPlay(); paintFrame(null,0,l);
+  show("screen-code");
+  if(!S.done[l.id]) showBrief(l);
+}
+function paintFrame(tl,t,l){
+  (l.pins||[]).forEach(p=>{
+    const b=$("bulb"+p.n); if(!b)return;
+    if(l.analog){
+      const v=tl?anaAt(tl,p.n,t):0;
+      b.classList.toggle("on",v>0);
+      b.style.opacity=v>0?(0.25+0.75*v/255).toFixed(2):"1";
+      b.style.boxShadow=v>0?`0 0 ${8+22*v/255}px ${1+4*v/255}px rgba(255,178,36,${(0.25+0.5*v/255).toFixed(2)})`:"";
+    } else b.classList.toggle("on", tl?pinAt(tl,p.n,t)===1:false);
+  });
+  if(l.strip){
+    const c=tl?stripAt(tl,t):[0,0,0], lit=c.some(v=>v>0), css=`rgb(${c[0]},${c[1]},${c[2]})`;
+    document.querySelectorAll("#strip .pxl").forEach(px=>{
+      px.style.background=lit?css:"#3B3560";
+      px.style.boxShadow=lit?"inset -3px -3px 0 rgba(0,0,0,.25)":"none";
+    });
+  }
+  if(l.pads){
+    let a=-1;
+    if(tl){ if(t>=1000&&t<2000)a=0; else if(t>=2000&&t<3000)a=1; else if(t>=3000&&t<4000)a=2; }
+    l.pads.forEach(i=>{ const el=$("pad"+i); if(el) el.classList.toggle("hit",i===a); });
+  }
+  if(l.button){ const el=$("pushbtn");
+    if(el) el.classList.toggle("down", !!tl&&((t>=1000&&t<2000)||(t>=3000&&t<4000))); }
+  if(l.sensor==="light"&&$("senVal")){
+    const dk=!!tl&&t>=2000&&t<4000;
+    $("senVal").textContent=dk?"180":"820";
+    $("senWord").textContent=dk?"dark":"bright";
+  }
+}
+function stopPlay(){ if(PLAY){ cancelAnimationFrame(PLAY); PLAY=null; } }
+function play(tl,l){
+  stopPlay(); let t0=performance.now();
+  (function step(now){
+    let t=now-t0;
+    if(t>BUDGET){ t0=now; t=0; }
+    paintFrame(tl,t,l);
+    PLAY=requestAnimationFrame(step);
+  })(t0);
+}
+async function runCode(){
+  const l=LV, v=$("cdVerdict");
+  v.className="verdict"; v.textContent="Uploading to the board...";
+  const prof=(l.sensor||"")+(l.pads?" touch":"");
+  const tl=await runSketch($("codeBox").value,prof);
+  $("serial").textContent=tl.logs.length?tl.logs.slice(0,50).join("\n")
+    :"SERIAL MONITOR -- Serial.println() output lands here.";
+  if(tl.err){ v.className="verdict no"; v.textContent="Error: "+tl.err; stopPlay(); paintFrame(null,0,l); return; }
+  play(tl,l);
+  let ok=false; try{ ok=!!l.check(tl); }catch(e){ ok=false; }
+  if(ok){ v.className="verdict ok"; v.textContent="Perfect run. The board does exactly what the level asked."; award(l); }
+  else { v.className="verdict no"; v.textContent=l.fail; }
+}
+
+$("backA").addEventListener("click",()=>{renderMap();show("screen-map");});
+$("backB").addEventListener("click",()=>{stopPlay();renderMap();show("screen-map");});
+$("btnCheck").addEventListener("click",()=>{
+  if(POWERED){ POWERED=false; renderBoard(); say("Power cut. Rewire, then run it again."); return; }
+  POWERED=true; checkCircuit();
+});
+$("bfGo").addEventListener("click",()=>{ $("brief").hidden=true; });
+$("brief").addEventListener("click",ev=>{ if(ev.target.id==="brief") $("brief").hidden=true; });
+document.addEventListener("keydown",ev=>{ if(ev.key==="Escape"&&!$("brief").hidden) $("brief").hidden=true; });
+$("btnBrief").addEventListener("click",()=>showBrief(LV));
+$("btnBriefC").addEventListener("click",()=>showBrief(LV));
+$("btnClear").addEventListener("click",()=>{ loadLevel(LV); renderPal(); renderBoard();
+  say("Board cleared. Start again."); });
+$("lightBtn").addEventListener("click",()=>{ ENV.bright=!ENV.bright; renderBoard();
+  say("Room is now "+(ENV.bright?"bright":"dark")+"."); });
+$("btnRun").addEventListener("click",runCode);
+$("btnReset").addEventListener("click",()=>{ $("codeBox").value=LV.start; stopPlay(); paintFrame(null,0,LV);
+  $("cdVerdict").className="verdict"; $("cdVerdict").textContent="Code reset to the starting sketch."; });
+
+paintRank(); renderMap();
+</script>
+</body>
+</html>
